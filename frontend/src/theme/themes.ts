@@ -169,7 +169,8 @@ export function applyPalette(p: Palette, mode: Mode): void {
     "--bg": p.bg,
     "--surface": rgba(p.surface, p.surfaceAlpha),
     "--surface-solid": over(p.surface, 0.94, p.bg),
-    "--surface-strong": rgba(p.surface, Math.min(0.92, p.surfaceAlpha + 0.2)),
+    // Windows: still frosted, but opaque enough that overlapping floating windows stay readable.
+    "--surface-strong": rgba(p.surface, Math.min(0.95, p.surfaceAlpha + 0.32)),
     "--text": p.text,
     "--text-2": p.text2,
     "--hairline": rgba(p.hairline, p.hairlineAlpha),

@@ -14,7 +14,9 @@ from pydantic import BaseModel
 from app.audit.log import to_csv
 from app.auth.deps import SessionDep, StateDep, client_ip, websocket_session
 from app.state import AppState
+from app.system import media
 from app.system.sun import appearance_now
+from app.system.tools import aur_helper, tool_status
 
 router = APIRouter()
 
@@ -107,6 +109,45 @@ async def audit_export(
 async def audit_verify(sess: SessionDep, state: StateDep) -> dict[str, Any]:
     ok, bad = await state.audit.verify()
     return {"ok": ok, "first_bad_id": bad}
+
+
+@router.get("/api/system/tools")
+async def system_tools(sess: SessionDep, state: StateDep) -> dict[str, Any]:
+    return {
+        "aur_helper": aur_helper(state.config.packages.aur_helper),
+        "tools": tool_status(["playerctl", "grim", "smartctl", "sensors", "rg", "fd", "tailscale"]),
+    }
+
+
+@router.get("/api/media")
+async def media_now(sess: SessionDep) -> dict[str, Any]:
+    return await media.now_playing()
+
+
+class VolumeIn(BaseModel):
+    level: float
+
+
+@router.post("/api/media/volume")
+async def media_volume(body: VolumeIn, sess: SessionDep) -> dict[str, Any]:
+    try:
+        return {"ok": await media.set_volume(body.level)}
+    except media.MediaUnavailable as exc:
+        raise HTTPException(
+            503, detail={"code": "unavailable", "message": "playerctl is not installed", "install": str(exc)}
+        ) from exc
+
+
+@router.post("/api/media/{action}")
+async def media_control(action: str, sess: SessionDep) -> dict[str, Any]:
+    if action not in media.ACTIONS:
+        raise HTTPException(404, detail={"code": "not_found", "message": "Unknown media action"})
+    try:
+        return {"ok": await media.control(action)}
+    except media.MediaUnavailable as exc:
+        raise HTTPException(
+            503, detail={"code": "unavailable", "message": "playerctl is not installed", "install": str(exc)}
+        ) from exc
 
 
 @router.websocket("/ws/events")

@@ -36,3 +36,37 @@ test("security headers are present", async ({ request }) => {
   expect(csp).toContain("script-src 'self'");
   expect(res.headers()["x-frame-options"]).toBe("DENY");
 });
+
+test("window manager: pairing, max two per workspace, task view, persistence", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => localStorage.removeItem("kiln.wm.v1"));
+  await page.reload();
+  const pill = page.getByLabel("Password");
+  await pill.fill(password);
+  await pill.press("Enter");
+  await expect(page.getByText(/Good (morning|afternoon|evening|night)/)).toBeVisible();
+
+  const dock = page.getByLabel("Dock");
+  await dock.getByRole("button", { name: /^Terminal/ }).click();
+  await dock.getByRole("button", { name: /^Files/ }).click(); // pairable → same workspace
+  await dock.getByRole("button", { name: /^Terminal/ }).click({ modifiers: ["Shift"] }); // forced new workspace
+  const layout = () =>
+    page.evaluate(() =>
+      (
+        JSON.parse(localStorage.getItem("kiln.wm.v1") ?? "{}").state.workspaces as { windows: string[] }[]
+      ).map((w) => w.windows.length),
+    );
+  await expect.poll(layout).toEqual([2, 1]);
+
+  await page.keyboard.press("Control+Alt+Tab");
+  await expect(page.getByRole("navigation", { name: "Workspaces" })).toContainText("2");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("navigation", { name: "Navigation" })).toBeVisible();
+
+  await page.reload();
+  await page
+    .getByLabel(/Password|^Ask /)
+    .first()
+    .waitFor();
+  expect(await layout()).toEqual([2, 1]);
+});

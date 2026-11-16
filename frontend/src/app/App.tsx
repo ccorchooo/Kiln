@@ -7,8 +7,8 @@ import { useAuth } from "../lib/store";
 import { toastError } from "../lib/toasts";
 import { useIdleLock } from "../lib/useIdleLock";
 import { useAppearance, type Appearance } from "../theme/useAppearance";
-import { Desktop } from "./Desktop";
 import { LockScreen } from "./LockScreen";
+import { Shell } from "../shell/Shell";
 
 // three.js + R3F load after first paint; the CSS wallpaper shows meanwhile.
 const Scene = lazy(() => import("../three/Scene").then((m) => ({ default: m.Scene })));
@@ -78,7 +78,7 @@ export function App() {
       <LayoutGroup>
         <AnimatePresence mode="popLayout">
           {status === "unlocked" ? (
-            <Desktop key="desktop" />
+            <Shell key="shell" />
           ) : status === "loading" ? null : (
             <LockScreen key="lock" />
           )}

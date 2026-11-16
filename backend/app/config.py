@@ -119,6 +119,11 @@ class ApprovalConfig:
 
 
 @dataclass
+class PackagesConfig:
+    aur_helper: str = "yay"  # yay | paru | auto (yay, then paru)
+
+
+@dataclass
 class FeatureFlags:
     automations: bool = False
     clipboard: bool = False
@@ -138,6 +143,7 @@ class Config:
     voice: VoiceConfig = field(default_factory=VoiceConfig)
     files: FilesConfig = field(default_factory=FilesConfig)
     approvals: ApprovalConfig = field(default_factory=ApprovalConfig)
+    packages: PackagesConfig = field(default_factory=PackagesConfig)
     features: FeatureFlags = field(default_factory=FeatureFlags)
     data_dir: str = str(DATA_DIR)
 

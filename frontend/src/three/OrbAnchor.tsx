@@ -1,6 +1,9 @@
 /**
- * Marks where the single shared orb should be. The WebGL orb springs to the active anchor's
- * rect; with quality "off" a CSS blob is rendered here instead and glides via layoutId.
+ * Marks where the single shared orb should be. The WebGL orb springs to the active anchor;
+ * with quality "off" a CSS blob is rendered here instead and glides via layoutId.
+ *
+ * `untransformed`: measure the layout position (offsetLeft/Top chain) instead of the painted
+ * rect, for anchors inside containers that are mid-animation (e.g. the workspace strip).
  */
 import { motion } from "framer-motion";
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
@@ -10,10 +13,24 @@ interface Props {
   className?: string;
   label?: string;
   onActivate?: () => void;
+  untransformed?: boolean;
   children?: ReactNode;
 }
 
-export function OrbAnchor({ className = "", label, onActivate, children }: Props) {
+function layoutRect(el: HTMLElement): { x: number; y: number; w: number; h: number } {
+  let x = 0;
+  let y = 0;
+  let node: HTMLElement | null = el;
+  while (node) {
+    x += node.offsetLeft;
+    y += node.offsetTop;
+    if (node.dataset.orbOrigin !== undefined) break;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+}
+
+export function OrbAnchor({ className = "", label, onActivate, untransformed = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const owner = useId();
   const quality = useUI((s) => s.quality);
@@ -22,14 +39,14 @@ export function OrbAnchor({ className = "", label, onActivate, children }: Props
     const el = ref.current;
     if (!el) return;
     const publish = () => {
-      const r = el.getBoundingClientRect();
+      const r = untransformed
+        ? layoutRect(el)
+        : (() => {
+            const b = el.getBoundingClientRect();
+            return { x: b.left, y: b.top, w: b.width, h: b.height };
+          })();
       useUI.getState().set({
-        orbAnchor: {
-          owner,
-          cx: r.left + r.width / 2,
-          cy: r.top + r.height / 2,
-          size: Math.min(r.width, r.height),
-        },
+        orbAnchor: { owner, cx: r.x + r.w / 2, cy: r.y + r.h / 2, size: Math.min(r.w, r.h) },
       });
     };
     publish();
@@ -40,7 +57,7 @@ export function OrbAnchor({ className = "", label, onActivate, children }: Props
       ro.disconnect();
       window.removeEventListener("resize", publish);
     };
-  }, [owner]);
+  }, [owner, untransformed]);
 
   useEffect(
     () => () => {

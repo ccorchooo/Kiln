@@ -39,7 +39,7 @@ for pair in "tailscale:tailscale" "rg:ripgrep" "fd:fd" "sensors:lm_sensors" "sma
   command -v "${pair%%:*}" >/dev/null || missing+=("${pair#*:}")
 done
 if ! command -v paru >/dev/null && ! command -v yay >/dev/null; then
-  warn "No AUR helper (paru/yay) found: package features will use pacman only."
+  warn "No AUR helper (yay/paru) found: package features will use pacman only."
 fi
 ((${#missing[@]})) && warn "Optional tools not found: ${missing[*]}  →  sudo pacman -S --needed ${missing[*]}"
 

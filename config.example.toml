@@ -70,6 +70,9 @@ danger = "typed"
 root = "typed"
 timeout_minutes = 30
 
+[packages]
+aur_helper = "yay"              # yay | paru | auto (yay first, then paru)
+
 [features]
 automations = false
 clipboard = false

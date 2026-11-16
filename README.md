@@ -3,8 +3,24 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 1 of 10.** Security core, lock screen, wallpaper shader and orb (idle) are done.
-> See [Roadmap](#roadmap).
+> **Status: Phase 2 of 10.** Security core, lock screen, wallpaper and orb, plus the desktop shell
+> (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
+> until their phases land. See [Roadmap](#roadmap).
+
+## Using the desktop
+
+| Action | How |
+|---|---|
+| Search apps, windows, settings and actions | `Ctrl+Space` or the magnifier in the center island. `Tab` hands the query to Ember. |
+| Task view (all workspaces) | `Ctrl+Alt+Tab` or the grid button. Drag windows between workspaces; drag the numbers to reorder. |
+| Previous/next workspace | `Ctrl+Alt+←/→`, a horizontal trackpad swipe, or a touch swipe on a title bar or Home |
+| Lock / panic | `Ctrl+Alt+L` / `Ctrl+Alt+Shift+K` |
+| Open an app on its own workspace | `Shift`-click or middle-click it in the dock |
+| Float or tile a workspace | The window button, or double-click a title bar. Drag a floating window to the screen edge to re-tile it. |
+
+Terminal, Files, Editor, Notes and Logs are *pairable*: opening one while a workspace holds a single
+app puts it alongside, split 50/50 with a draggable divider. A workspace never holds more than two apps.
+Layout is remembered per device.
 
 ## Install
 
@@ -91,6 +107,17 @@ that `local-ai run` starts at `http://127.0.0.1:11435/v1`, with `qwen3.5:4b`. Vo
 TTS at `:8891` and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you
 configure one.
 
+## Optional tools
+
+Kiln uses these when they're installed and degrades gracefully when they're not:
+
+- **AUR:** `yay` (preferred; set `[packages] aur_helper`) or `paru`
+- **Media widget:** `playerctl`. Without it, `/api/media` reports `available: false` along with the
+  install command (`sudo pacman -S playerctl`), and the widget shows that hint.
+- **Screenshots:** `grim`. **Disk health:** `smartctl`. **Temperatures:** `sensors`. **Search:** `rg`, `fd`.
+
+`GET /api/system/tools` lists which of these are available.
+
 ## Security model
 
 - **Never runs as root.** It refuses to start as root. Privileged actions will go through an explicit
@@ -124,7 +151,7 @@ need re-authentication.
 ```bash
 # backend
 cd backend && uv venv .venv && uv pip install -p .venv/bin/python -e '.[dev]'
-.venv/bin/pytest            # 54 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config
+.venv/bin/pytest            # 57 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media
 .venv/bin/ruff check app tests && .venv/bin/mypy app
 
 # run against a scratch config (doesn't touch ~/.config/kiln)
@@ -154,10 +181,13 @@ backend/app/
   auth/            passwords (Argon2id/TOTP), sessions, CSRF guards, rate limiting, routes
   audit/           append-only hash-chained audit log
   fs/jail.py       the path-validation gate
-  system/          sunrise/sunset schedule, bind/exposure checks
+  system/          sunrise/sunset, bind/exposure checks, tool discovery (yay/paru), media (playerctl)
   routes_core.py   appearance, audit API, /ws/events
 frontend/src/
-  app/             App, LockScreen, PasswordPill, Desktop (Phase 1 home)
+  app/             App, LockScreen, PasswordPill
+  shell/           window manager store, Strip (Home + workspaces + task view), Window,
+                   WorkspacePage (tiling/floating), Taskbar (dock, island, tray), Spotlight, app registry
+  apps/            Settings (appearance, dock, devices, security); placeholders for later phases
   three/           shared canvas: wallpaper shader → composite → orb; OrbAnchor
   theme/           tokens/themes (+ WCAG checker), appearance controller
   lib/             api client, stores, events socket, idle lock
@@ -167,7 +197,7 @@ frontend/src/
 ## Roadmap
 
 1. ✅ Skeleton, security, lock screen, wallpaper, orb (idle)
-2. Shell: three-pill taskbar, Spotlight, workspaces + tiling WM, task view, full lock ↔ desktop collapse
+2. ✅ Shell: three-pill taskbar, Spotlight, workspaces + tiling WM, task view, lock ↔ desktop collapse
 3. Widgets and the metrics WebSocket
 4. Terminal (PTY over WebSocket)
 5. File manager

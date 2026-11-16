@@ -143,13 +143,15 @@ html.mode-transition *::after {
   }
 }
 
-/* Soft clay focus ring, keyboard only */
-:focus {
-  outline: none;
-}
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+/* Soft clay focus ring, keyboard only. In the base layer so utilities (outline-none) win. */
+@layer base {
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
 }
 .pill-focus:focus-within {
   box-shadow:
@@ -218,4 +220,40 @@ input::placeholder {
 }
 ::selection {
   background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Windows: a little more opaque than pills, for readability. */
+.window {
+  background: var(--surface-strong);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+    0 24px 60px -24px var(--shadow-color),
+    0 4px 16px -8px var(--shadow-color-soft);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .window {
+    background: var(--surface-solid);
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hover-lift {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
 }

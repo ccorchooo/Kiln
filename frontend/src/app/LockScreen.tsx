@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { AiPill } from "../components/AiPill";
 import { ClockPill } from "../components/ClockPill";
 import { fade } from "../components/motion";
 import { OrbAnchor } from "../three/OrbAnchor";
@@ -24,6 +25,7 @@ export function LockScreen() {
       <div className="absolute inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] flex flex-col items-stretch gap-3 md:inset-x-auto md:bottom-6 md:left-6 md:flex-row md:items-center">
         <PasswordPill />
         <div className="flex justify-center gap-3 md:contents">
+          <AiPill withOrb={false} />
           <ClockPill />
         </div>
       </div>
