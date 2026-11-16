@@ -77,6 +77,10 @@ class Jail:
             else:
                 self._prefixes.append(Path(os.path.realpath(expanded)))
 
+    @property
+    def denied_prefixes(self) -> list[Path]:
+        return list(self._prefixes)
+
     def _expand(self, p: str) -> str:
         if p == "~" or p.startswith("~/"):
             return str(self.home) + p[1:]

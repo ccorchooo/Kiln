@@ -12,6 +12,7 @@ from app.auth.sessions import SessionStore
 from app.config import Config
 from app.db import Database
 from app.events import EventHub
+from app.fs.jail import Jail
 from app.system.hub import MetricsHub
 from app.terminal.manager import TerminalManager
 
@@ -28,6 +29,7 @@ class AppState:
     limiter: LoginRateLimiter
     metrics: MetricsHub
     terminals: TerminalManager
+    jail: Jail
     events: EventHub = field(default_factory=EventHub)
     # Registered by subsystems (terminals, running AI tools) to kill everything on panic.
     panic_hooks: list[PanicHook] = field(default_factory=list)
@@ -46,6 +48,12 @@ class AppState:
             limiter=LoginRateLimiter(db, config.auth),
             metrics=MetricsHub(config),
             terminals=terminals,
+            jail=Jail(
+                config.files.jail_root,
+                config.files.denylist,
+                home=config.files.jail_root,
+                max_read_bytes=config.files.max_read_bytes,
+            ),
         )
         state.panic_hooks.append(terminals.panic)
         return state

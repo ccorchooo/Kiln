@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { spring } from "../../components/motion";
 import { api, ApiError } from "../../lib/api";
 import { useUI } from "../../lib/store";
@@ -24,7 +25,15 @@ import { terminalTheme } from "../../theme/terminal";
 import { useIsMobile } from "../../shell/hooks";
 import type { AppProps } from "../../shell/apps";
 import { useWM } from "../../shell/wm";
-import { dropLayout, loadLayout, saveLayout, useTermPrefs, type TermLayout, type TermTab } from "./prefs";
+import {
+  dropLayout,
+  loadLayout,
+  saveLayout,
+  takePendingCwd,
+  useTermPrefs,
+  type TermLayout,
+  type TermTab,
+} from "./prefs";
 import { Snippets } from "./Snippets";
 import { TermView, type PaneStatus, type TermHandle } from "./TermView";
 
@@ -33,8 +42,11 @@ interface Created {
   title: string;
 }
 
-async function createTerm(): Promise<string> {
-  const r = await api<Created>("/api/terminals", { method: "POST", body: { cols: 100, rows: 30 } });
+async function createTerm(cwd?: string | null): Promise<string> {
+  const r = await api<Created>("/api/terminals", {
+    method: "POST",
+    body: { cols: 100, rows: 30, cwd: cwd ?? undefined },
+  });
   return r.id;
 }
 
@@ -171,7 +183,7 @@ export default function TerminalApp({ windowId }: AppProps) {
   useEffect(() => {
     if (layout?.tabs.length) return;
     let cancelled = false;
-    createTerm()
+    createTerm(takePendingCwd())
       .then((id) => {
         if (cancelled) return killTerm(id);
         const next: TermLayout = { tabs: [{ id: tabId(), panes: [id], split: "row", focus: 0 }], active: 0 };
@@ -283,12 +295,10 @@ export default function TerminalApp({ windowId }: AppProps) {
     if (!h) return;
     const text = kind === "explain" ? h.selection() : h.tail(40);
     if (!text.trim()) {
-      useToasts
-        .getState()
-        .push({
-          tone: "info",
-          title: kind === "explain" ? "Select some text first" : "Nothing to look at yet",
-        });
+      useToasts.getState().push({
+        tone: "info",
+        title: kind === "explain" ? "Select some text first" : "Nothing to look at yet",
+      });
       return;
     }
     useWM
@@ -582,53 +592,56 @@ export default function TerminalApp({ windowId }: AppProps) {
         </div>
       )}
 
-      <AnimatePresence>
-        {menu && (
-          <>
-            <div
-              className="fixed inset-0 z-[70]"
-              onClick={() => setMenu(null)}
-              onContextMenu={(e) => (e.preventDefault(), setMenu(null))}
-            />
-            <motion.div
-              role="menu"
-              className="window fixed z-[71] w-56 rounded-[16px] p-1.5"
-              style={{
-                left: Math.min(menu.x, window.innerWidth - 232),
-                top: Math.min(menu.y, window.innerHeight - 260),
-              }}
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}
-              transition={spring}
-            >
-              {(
-                [
-                  ["Copy", () => active()?.copy()],
-                  ["Paste", () => active()?.paste()],
-                  ["Explain selection with Ember", () => askEmber("explain")],
-                  ["Fix last error with Ember", () => askEmber("fix")],
-                  ["Find…", () => setSearchOpen(true)],
-                  ["Clear scrollback", () => active()?.clear()],
-                ] as const
-              ).map(([label, fn]) => (
-                <button
-                  key={label}
-                  role="menuitem"
-                  type="button"
-                  onClick={() => {
-                    setMenu(null);
-                    fn();
-                  }}
-                  className="w-full rounded-[10px] px-3 py-2 text-left text-sm text-ink hover:bg-[var(--hairline)]"
-                >
-                  {label}
-                </button>
-              ))}
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {menu && (
+            <>
+              <div
+                className="fixed inset-0 z-[70]"
+                onClick={() => setMenu(null)}
+                onContextMenu={(e) => (e.preventDefault(), setMenu(null))}
+              />
+              <motion.div
+                role="menu"
+                className="window fixed z-[71] w-56 rounded-[16px] p-1.5"
+                style={{
+                  left: Math.min(menu.x, window.innerWidth - 232),
+                  top: Math.min(menu.y, window.innerHeight - 260),
+                }}
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}
+                transition={spring}
+              >
+                {(
+                  [
+                    ["Copy", () => active()?.copy()],
+                    ["Paste", () => active()?.paste()],
+                    ["Explain selection with Ember", () => askEmber("explain")],
+                    ["Fix last error with Ember", () => askEmber("fix")],
+                    ["Find…", () => setSearchOpen(true)],
+                    ["Clear scrollback", () => active()?.clear()],
+                  ] as const
+                ).map(([label, fn]) => (
+                  <button
+                    key={label}
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setMenu(null);
+                      fn();
+                    }}
+                    className="w-full rounded-[10px] px-3 py-2 text-left text-sm text-ink hover:bg-[var(--hairline)]"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
     </div>
   );
 }

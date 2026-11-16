@@ -3,7 +3,7 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 4 of 10.** The terminal is real now; widgets with live metrics arrived in Phase 3.
+> **Status: Phase 5 of 10.** Files, previews and the editor are in. The terminal arrived in Phase 4, widgets in Phase 3.
 > Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
 > (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
 > until their phases land. See [Roadmap](#roadmap).
@@ -108,6 +108,32 @@ that `local-ai run` starts at `http://127.0.0.1:11435/v1`, with `qwen3.5:4b`. Vo
 TTS at `:8891` and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you
 configure one.
 
+## Files and Editor
+
+Files is rooted at your home folder: the same jail Ember's file tools will use.
+
+- **Views and tabs:** list, grid with image thumbnails, and Miller columns; tabs, back and forward,
+  and editable breadcrumbs (double-click, or `Ctrl+L`).
+- **Sidebar:** places, bookmarks, recent files, Trash, and a disk usage bar.
+- **Search:** by name or by content (`fd` / `rg`, streamed).
+- **Everyday operations:** new, rename (`F2`), cut, copy and paste across windows, and drag to move
+  (hold `Ctrl` to copy).
+- **Trash:** `Delete` moves things to the freedesktop Trash, so Dolphin and Nautilus see the same items.
+  Restore them from Trash in the sidebar.
+- **Deleting forever:** `Shift+Delete` asks for confirmation and then your password.
+- **Upload and download:** drop files on a folder, or use the button. Uploads are 4 MiB chunks and
+  resume after network drops. Folders download as a zip built on the fly.
+- **Previews:** images (zoom and pan), video, audio, PDF (pdf.js), markdown, code (Monaco, read-only),
+  3D models (`.glb`, `.gltf`, `.obj`, `.fbx`) and archive listings. Extract and compress from the
+  right-click menu.
+- **Details pane:** permissions editor (chmod), owner, timestamps, and a SHA-256 checksum on demand.
+- **Protected locations** (`~/.ssh`, `~/.gnupg`, `.env` files, browser profiles…) ask for your password
+  before showing their contents.
+- **Live:** folders refresh as they change on disk.
+
+The Editor (Monaco) opens text and code files as tabs. `Ctrl+S` saves. If the file changed on disk
+since you opened it, you can compare, overwrite or reload; nothing is silently lost.
+
 ## Terminal
 
 The Terminal app runs your login shell (`$SHELL`, zsh here) in a real PTY on the server, as you, never root.
@@ -187,7 +213,7 @@ need re-authentication.
 ```bash
 # backend
 cd backend && uv venv .venv && uv pip install -p .venv/bin/python -e '.[dev]'
-.venv/bin/pytest            # 94 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets, terminal
+.venv/bin/pytest            # 113 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets, terminal, filesystem
 .venv/bin/ruff check app tests && .venv/bin/mypy app
 
 # run against a scratch config (doesn't touch ~/.config/kiln)
@@ -223,12 +249,17 @@ backend/app/
   routes_metrics.py  /ws/metrics, snapshot, widget settings
   terminal/        PTY manager (spawn, replay buffer, keep-alive, titles, panic kill)
   routes_terminal.py /api/terminals, /ws/terminal/{id}, /api/snippets
+  fs/              ops, freedesktop trash, chunked uploads, archives, search, watcher
+  routes_fs.py     /api/fs/*, /ws/fs (contract: docs/phase5-fs-api.md)
   routes_core.py   appearance, audit API, /ws/events
 frontend/src/
   app/             App, LockScreen, PasswordPill
   shell/           window manager store, Strip (Home + workspaces + task view), Window,
                    WorkspacePage (tiling/floating), Taskbar (dock, island, tray), Spotlight, app registry
   apps/            Settings (appearance, dock, taskbar widgets, devices, security); placeholders
+  apps/files/      file manager (views, panels, uploads, watcher)
+  apps/editor/     Monaco editor app + workers/themes
+  previews/        lazy viewers per file kind
   apps/terminal/   xterm.js panes, tabs/splits, snippets, search, key row
   widgets/         widget registry + pill/segment + popovers, metrics socket/store, formatters
   three/           shared canvas: wallpaper shader → composite → orb; OrbAnchor
@@ -243,7 +274,7 @@ frontend/src/
 2. ✅ Shell: three-pill taskbar, Spotlight, workspaces + tiling WM, task view, lock ↔ desktop collapse
 3. ✅ Widgets (14 types), Settings → Taskbar, lock-screen toggles, `/ws/metrics`
 4. ✅ Terminal: real PTY over WebSocket, tabs, split panes, persistence, snippets, mobile key row
-5. File manager
+5. ✅ File manager, previews (image, video, audio, PDF, markdown, code, 3D, archives), Monaco editor
 6. Ember (text): tools, risk classifier, approvals
 7. Voice: STT/TTS, full orb states, captions
 8. System apps (dashboard, processes, services, packages, logs, network, storage, power)

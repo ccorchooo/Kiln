@@ -1,5 +1,6 @@
 import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { lazy, Suspense, useEffect, useRef } from "react";
+import { ReauthDialog } from "../components/Reauth";
 import { Toaster } from "../components/Toaster";
 import { lockNow, panicNow, refreshAuth } from "../lib/auth";
 import { EventSocket } from "../lib/events";
@@ -84,14 +85,17 @@ export function App() {
       const key = e.key.toLowerCase();
       if (e.shiftKey && key === "k") {
         e.preventDefault();
+        e.stopPropagation();
         void panicNow();
       } else if (!e.shiftKey && key === "l" && useAuth.getState().status === "unlocked") {
         e.preventDefault();
+        e.stopPropagation();
         void lockNow();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Capture phase: global shortcuts must win over focused apps (xterm stops propagation).
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, []);
 
   return (
@@ -110,6 +114,7 @@ export function App() {
         </AnimatePresence>
       </LayoutGroup>
       <Toaster />
+      <ReauthDialog />
     </>
   );
 }

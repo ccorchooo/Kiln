@@ -16,6 +16,8 @@ from app.auth.deps import UNSAFE_METHODS, origin_ok
 from app.auth.routes import router as auth_router
 from app.config import DATA_DIR, Config, load_config
 from app.routes_core import router as core_router
+from app.routes_fs import install_error_handlers
+from app.routes_fs import router as fs_router
 from app.routes_metrics import router as metrics_router
 from app.routes_terminal import router as terminal_router
 from app.state import AppState
@@ -80,7 +82,9 @@ class SecurityMiddleware:
         async def wrapped(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers = list(message.get("headers", []))
-                headers.extend(SECURITY_HEADERS)
+                # Routes may set stricter values (e.g. /api/fs/raw's sandbox CSP); never duplicate them.
+                present = {k.lower() for k, _ in headers}
+                headers.extend(h for h in SECURITY_HEADERS if h[0] not in present)
                 if is_api:
                     headers.append((b"cache-control", b"no-store"))
                 message["headers"] = headers
@@ -130,6 +134,8 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(core_router)
     app.include_router(metrics_router)
     app.include_router(terminal_router)
+    app.include_router(fs_router)
+    install_error_handlers(app)
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:

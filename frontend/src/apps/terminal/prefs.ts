@@ -69,3 +69,14 @@ export function dropLayout(windowId: string): void {
     /* ignore */
   }
 }
+
+/** Working directory for the next new terminal ("Open in terminal here"). */
+let pendingCwd: string | null = null;
+export function takePendingCwd(): string | null {
+  const c = pendingCwd;
+  pendingCwd = null;
+  return c;
+}
+export function setPendingCwd(path: string): void {
+  pendingCwd = path;
+}

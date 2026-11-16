@@ -32,6 +32,8 @@ export interface AppDef {
 const SettingsApp = lazy(() => import("../apps/settings/SettingsApp"));
 const AssistantPlaceholder = lazy(() => import("../apps/assistant/AssistantPlaceholder"));
 const TerminalApp = lazy(() => import("../apps/terminal/TerminalApp"));
+const FilesApp = lazy(() => import("../apps/files/FilesApp"));
+const EditorApp = lazy(() => import("../apps/editor/EditorApp"));
 
 export const APPS: Record<string, AppDef> = {
   assistant: {
@@ -63,7 +65,7 @@ export const APPS: Record<string, AppDef> = {
     keywords: ["file manager", "folder", "home", "browse", "explorer"],
     pairable: true,
     multiInstance: true,
-    phase: 5,
+    component: FilesApp,
   },
   editor: {
     id: "editor",
@@ -72,8 +74,8 @@ export const APPS: Record<string, AppDef> = {
     description: "Edit text and code with Monaco.",
     keywords: ["code", "text", "monaco", "edit"],
     pairable: true,
-    multiInstance: true,
-    phase: 5,
+    multiInstance: false,
+    component: EditorApp,
   },
   notes: {
     id: "notes",
