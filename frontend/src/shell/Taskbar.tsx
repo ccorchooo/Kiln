@@ -3,7 +3,7 @@ import { ChevronDown, House, LayoutGrid, Plus, Search } from "lucide-react";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { spring } from "../components/motion";
 import { useWidgets } from "../widgets/store";
-import { Widget } from "../widgets/Widget";
+import { WidgetIslands } from "../widgets/Islands";
 import { APPS } from "./apps";
 import { useWM } from "./wm";
 
@@ -276,9 +276,13 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
               dragConstraints={{ top: 0, bottom: 0 }}
               onDragEnd={(_, info) => info.offset.y < -40 && setSheet(false)}
             >
-              {widgets.map((w) => (
-                <Widget key={w.id} w={w} interactive withOrb={orbInPill} placement="down" align="start" />
-              ))}
+              <WidgetIslands
+                widgets={widgets}
+                interactive
+                withOrb={orbInPill}
+                placement="down"
+                layout="wrap"
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -290,28 +294,28 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
     // On lock, the outgoing bar fades fast; the shared pills (island → password, tray → lock row)
     // carry the motion via layoutId.
     <motion.div
-      className="pointer-events-none fixed inset-x-3 bottom-3 z-30 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3"
+      className="pointer-events-none fixed inset-x-3 bottom-3 z-30 flex items-center gap-3"
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
       <motion.div
         {...fold}
         transition={spring}
-        className="glass pointer-events-auto flex h-12 items-center justify-self-start rounded-full px-1.5"
+        className="glass pointer-events-auto flex h-12 shrink-0 items-center rounded-full px-1.5"
         aria-label="Dock"
       >
         <DockApps />
       </motion.div>
-      <div className="pointer-events-auto">
+      <div className="pointer-events-auto shrink-0">
         <CenterIsland />
       </div>
-      <div
-        className="glass no-scrollbar pointer-events-auto flex h-12 max-w-full min-w-0 items-center gap-0.5 justify-self-end overflow-x-auto rounded-full px-1"
-        aria-label="Widgets"
-      >
-        {widgets.map((w) => (
-          <Widget key={w.id} w={w} interactive withOrb={orbInPill} variant="segment" />
-        ))}
-      </div>
+      {/* Widget islands take the rest of the row; py-2 keeps their hover lift unclipped. */}
+      <WidgetIslands
+        widgets={widgets}
+        interactive
+        withOrb={orbInPill}
+        layout="row"
+        className="pointer-events-auto -my-2 flex-1"
+      />
     </motion.div>
   );
 }

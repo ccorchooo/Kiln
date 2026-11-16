@@ -3,7 +3,13 @@ import { ChevronDown, GripVertical, Lock, LockOpen, Plus, Trash2 } from "lucide-
 import { useState } from "react";
 import { spring } from "../../components/motion";
 import { newWidget, useWidgets } from "../../widgets/store";
-import { MAX_WIDGETS, type WidgetConfig, type WidgetType } from "../../widgets/types";
+import {
+  CATEGORY,
+  CATEGORY_LABEL,
+  MAX_WIDGETS,
+  type WidgetConfig,
+  type WidgetType,
+} from "../../widgets/types";
 import { WIDGETS } from "../../widgets/Widget";
 
 const LOCK_NOTE: Partial<Record<WidgetType, string>> = {
@@ -83,8 +89,14 @@ function Row({
           className="size-4 shrink-0 cursor-grab text-ink-2 active:cursor-grabbing"
           strokeWidth={1.5}
         />
-        <Icon className="size-[18px] shrink-0 text-accent-ink" strokeWidth={1.5} />
-        <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{def.name}</span>
+        <Icon
+          className="size-[18px] shrink-0"
+          style={{ color: `color-mix(in srgb, var(--cat-${CATEGORY[w.type]}) 72%, var(--text))` }}
+          strokeWidth={1.5}
+        />
+        <span className="min-w-0 flex-1 truncate text-[15px] text-ink">
+          {def.name} <span className="text-xs text-ink-2">· {CATEGORY_LABEL[CATEGORY[w.type]]}</span>
+        </span>
         <div
           role="radiogroup"
           aria-label={`${def.name} size`}
@@ -175,8 +187,10 @@ export function TaskbarSection() {
   return (
     <>
       <p className="py-4 text-sm text-ink-2">
-        Widgets sit in the right pill of the taskbar, in this order. Drag to reorder. The lock icon decides
-        what shows on the lock screen. Sensitive details are never shown there.
+        Widgets sit after the center island, grouped into colored islands by kind: Ember, system, network,
+        time and weather, media, updates and notifications. Islands follow the order of their first widget
+        here; drag to reorder. The lock icon decides what shows on the lock screen. Sensitive details never
+        show there.
       </p>
       <Reorder.Group
         axis="y"
@@ -212,7 +226,11 @@ export function TaskbarSection() {
               onClick={() => void save([...widgets, newWidget(type)])}
               className="hover-lift flex items-center gap-3 rounded-[16px] border border-[var(--hairline-strong)] px-3 py-2.5 text-left disabled:opacity-50"
             >
-              <Icon className="size-[18px] shrink-0 text-ink-2" strokeWidth={1.5} />
+              <Icon
+                className="size-[18px] shrink-0"
+                style={{ color: `color-mix(in srgb, var(--cat-${CATEGORY[type]}) 72%, var(--text))` }}
+                strokeWidth={1.5}
+              />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm text-ink">
                   {def.name}

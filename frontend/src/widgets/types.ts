@@ -143,3 +143,44 @@ export interface MetricsData {
   media?: MediaData;
   ai?: AiData;
 }
+
+/** Widgets are grouped into islands by category; each category has its own tint. */
+export type WidgetCategory = "assistant" | "system" | "network" | "ambient" | "media" | "alerts";
+
+export const CATEGORY: Record<WidgetType, WidgetCategory> = {
+  ai: "assistant",
+  cpu: "system",
+  gpu: "system",
+  memory: "system",
+  temps: "system",
+  disk: "system",
+  battery: "system",
+  uptime: "system",
+  network: "network",
+  clock: "ambient",
+  weather: "ambient",
+  media: "media",
+  updates: "alerts",
+  notifications: "alerts",
+};
+
+export const CATEGORY_LABEL: Record<WidgetCategory, string> = {
+  assistant: "Ember",
+  system: "System",
+  network: "Network",
+  ambient: "Time and weather",
+  media: "Media",
+  alerts: "Updates and notifications",
+};
+
+/** Group in order of each category's first widget; widgets keep their order inside a group. */
+export function groupWidgets(
+  widgets: WidgetConfig[],
+): { category: WidgetCategory; widgets: WidgetConfig[] }[] {
+  const groups = new Map<WidgetCategory, WidgetConfig[]>();
+  for (const w of widgets) {
+    const c = CATEGORY[w.type];
+    groups.set(c, [...(groups.get(c) ?? []), w]);
+  }
+  return [...groups].map(([category, ws]) => ({ category, widgets: ws }));
+}

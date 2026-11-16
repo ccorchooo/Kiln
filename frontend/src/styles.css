@@ -257,3 +257,36 @@ input::placeholder {
   transform: translateY(-1px);
   filter: brightness(1.04);
 }
+
+/* Widget island tints by category: a soft wash over the glass, a tinted hairline, and
+   category-colored icons (mixed toward the text color so they keep ≥3:1 contrast). */
+:root,
+:root[data-mode="light"] {
+  --cat-assistant: #c96442;
+  --cat-system: #6e8b5e;
+  --cat-network: #5b7a99;
+  --cat-ambient: #c89b3c;
+  --cat-media: #9a6a8a;
+  --cat-alerts: #b5533c;
+}
+:root[data-mode="dark"] {
+  --cat-assistant: #d97757;
+  --cat-system: #8aa77a;
+  --cat-network: #86a3c2;
+  --cat-ambient: #d6ae55;
+  --cat-media: #c193b3;
+  --cat-alerts: #cf6f57;
+}
+.widget-island {
+  background: color-mix(in srgb, var(--cat) 15%, var(--surface));
+  border-color: color-mix(in srgb, var(--cat) 32%, transparent);
+  --cat-ink: color-mix(in srgb, var(--cat) 72%, var(--text));
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .widget-island {
+    background: color-mix(in srgb, var(--cat) 15%, var(--surface-solid));
+  }
+}
+.widget-island .lucide {
+  color: var(--cat-ink);
+}

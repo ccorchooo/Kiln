@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { fade } from "../components/motion";
 import { OrbAnchor } from "../three/OrbAnchor";
 import { useWidgets } from "../widgets/store";
-import { Widget } from "../widgets/Widget";
+import { WidgetIslands } from "../widgets/Islands";
 import { PasswordPill } from "./PasswordPill";
 
 /**
@@ -27,11 +27,12 @@ export function LockScreen() {
       />
       <div className="absolute inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] flex flex-col items-stretch gap-3 md:inset-x-auto md:bottom-6 md:left-6 md:flex-row md:items-center">
         <PasswordPill />
-        <div className="flex flex-wrap justify-center gap-3 md:contents">
-          {widgets.map((w) => (
-            <Widget key={w.id} w={w} interactive={false} />
-          ))}
-        </div>
+        <WidgetIslands
+          widgets={widgets}
+          interactive={false}
+          layout="wrap"
+          className="md:flex-nowrap md:justify-start"
+        />
       </div>
     </motion.main>
   );
