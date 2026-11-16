@@ -1,6 +1,7 @@
 /** Spotlight sources. Later phases add file, process and saved-command providers from the API. */
 import type { LucideIcon } from "lucide-react";
-import { Gauge, House, LayoutGrid, Lock, Monitor, Moon, Power, Sparkles, Sun, SunMoon } from "lucide-react";
+import { Gauge, LayoutGrid, Lock, Monitor, Moon, Power, Sun, SunMoon } from "lucide-react";
+import { EmberGlyph, KilnGlyph } from "../components/Brand";
 import { api } from "../lib/api";
 import { lockNow, panicNow } from "../lib/auth";
 import { useAuth, useUI } from "../lib/store";
@@ -141,7 +142,13 @@ function staticResults(): Result[] {
     },
   ].map((r) => ({ ...r, section: "Settings" as const }));
   const actions: Result[] = [
-    { id: "act:home", title: "Go home", icon: House, keywords: ["desktop", "orb"], run: () => wm.goTo(-1) },
+    {
+      id: "act:home",
+      title: "Go home",
+      icon: KilnGlyph,
+      keywords: ["desktop", "orb"],
+      run: () => wm.goTo(-1),
+    },
     {
       id: "act:tasks",
       title: "Task view",
@@ -184,7 +191,7 @@ export function askResult(query: string): Result {
     id: "ask",
     section: "Actions",
     title: `Ask ${name}: “${query}”`,
-    icon: Sparkles,
+    icon: EmberGlyph,
     keywords: [],
     run: () => useWM.getState().ask(query),
   };

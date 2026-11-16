@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ember">
+  <defs>
+    <radialGradient id="body" cx="38%" cy="32%" r="80%">
+      <stop offset="0" stop-color="#FFF4E6"/>
+      <stop offset=".3" stop-color="#F6C9A0"/>
+      <stop offset=".64" stop-color="#E58F6B"/>
+      <stop offset="1" stop-color="#B44C2C"/>
+    </radialGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF1E2" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#FFF1E2" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#FFF1E2" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="50%" cy="54%" r="50%">
+      <stop offset=".55" stop-color="#E58F6B" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#E58F6B" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="clip">
+      <path d="M270 92c76 2 140 52 146 132 7 82-34 160-112 186-82 28-176-6-202-88-27-84 8-182 80-214 28-12 58-17 88-16z"/>
+    </clipPath>
+  </defs>
+  <circle cx="256" cy="262" r="238" fill="url(#halo)"/>
+  <!-- liquid orb: an organic, slightly lopsided outline -->
+  <path d="M270 92c76 2 140 52 146 132 7 82-34 160-112 186-82 28-176-6-202-88-27-84 8-182 80-214 28-12 58-17 88-16z" fill="url(#body)"/>
+  <!-- a soft band of light flowing through it -->
+  <g clip-path="url(#clip)">
+    <path d="M90 300c70-40 150-20 210-70s96-70 140-60" fill="none" stroke="url(#band)" stroke-width="34" stroke-linecap="round" opacity=".8"/>
+  </g>
+  <ellipse cx="206" cy="168" rx="40" ry="24" transform="rotate(-32 206 168)" fill="#FFFAF3" opacity=".72"/>
+</svg>

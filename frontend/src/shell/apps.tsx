@@ -6,10 +6,10 @@ import {
   NotebookPen,
   ScrollText,
   Settings2,
-  Sparkle,
   SquareTerminal,
   type LucideIcon,
 } from "lucide-react";
+import { EmberGlyph } from "../components/Brand";
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 
 export interface AppProps {
@@ -39,7 +39,7 @@ export const APPS: Record<string, AppDef> = {
   assistant: {
     id: "assistant",
     name: "Ember",
-    icon: Sparkle,
+    icon: EmberGlyph,
     description: "Chat with Ember, review approvals and tool output.",
     keywords: ["ai", "assistant", "chat", "ask", "ember"],
     pairable: false,

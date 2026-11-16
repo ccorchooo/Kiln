@@ -26,7 +26,6 @@ import {
   Play,
   SkipBack,
   SkipForward,
-  Sparkle,
   Sun,
   Sunrise,
   Sunset,
@@ -36,6 +35,7 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { EmberGlyph } from "../components/Brand";
 import { spring } from "../components/motion";
 import { api } from "../lib/api";
 import { useAuth, useUI, type OrbMood } from "../lib/store";
@@ -248,7 +248,7 @@ export const WIDGETS: Record<WidgetType, Def> = {
   ai: {
     name: "Ember",
     description: "Model, state and pending approvals",
-    icon: Sparkle,
+    icon: EmberGlyph,
     value: () => null,
     popover: (d) => (
       <>

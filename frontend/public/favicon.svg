@@ -1,1 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><radialGradient id="g" cx="38%" cy="34%" r="70%"><stop offset="0" stop-color="#FBE6D4"/><stop offset=".45" stop-color="#E9A27F"/><stop offset="1" stop-color="#C96442"/></radialGradient></defs><rect width="64" height="64" rx="16" fill="#1C1916"/><circle cx="32" cy="32" r="18" fill="url(#g)"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Kiln">
+  <defs>
+    <linearGradient id="dome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E48A68"/>
+      <stop offset="1" stop-color="#C9603E"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="62%" r="55%">
+      <stop offset="0" stop-color="#FFD9B8" stop-opacity=".75"/>
+      <stop offset="1" stop-color="#E58F6B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ember" cx="40%" cy="34%" r="72%">
+      <stop offset="0" stop-color="#FFF4E6"/>
+      <stop offset=".45" stop-color="#F3AE85"/>
+      <stop offset="1" stop-color="#D0623F"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#1C1916"/>
+  <!-- beehive kiln: dome with a vent, and an arched door (cut out with evenodd) -->
+  <path fill="url(#dome)" fill-rule="evenodd" d="M238 98h36a12 12 0 0 1 12 12v18.5C352 142 396 200 396 270v112H116V270c0-70 44-128 110-141.5V110a12 12 0 0 1 12-12z M198 382v-78c0-32 26-58 58-58s58 26 58 58v78z"/>
+  <!-- light in the doorway -->
+  <path d="M198 382v-78c0-32 26-58 58-58s58 26 58 58v78z" fill="url(#glow)"/>
+  <!-- the ember -->
+  <path d="M257 370c-23 0-39-14-39-34 0-21 16-37 40-37 21 0 37 15 37 35 0 22-16 36-38 36z" fill="url(#ember)"/>
+  <!-- hearth -->
+  <rect x="92" y="382" width="328" height="30" rx="15" fill="#C9603E"/>
+</svg>

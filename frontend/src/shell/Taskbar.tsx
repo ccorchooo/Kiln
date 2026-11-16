@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, Reorder } from "framer-motion";
-import { ChevronDown, House, LayoutGrid, Plus, Search } from "lucide-react";
+import { ChevronDown, LayoutGrid, Plus, Search } from "lucide-react";
+import { KilnGlyph } from "../components/Brand";
 import { useState, type MouseEvent, type ReactNode } from "react";
 import { spring } from "../components/motion";
 import { useWidgets } from "../widgets/store";
@@ -58,7 +59,7 @@ export function CenterIsland({ extra }: { extra?: ReactNode }) {
             transition={spring}
           >
             <IslandButton label="Home" active={current === -1} onClick={() => wm().goTo(-1)}>
-              <House className="size-[18px]" strokeWidth={1.5} />
+              <KilnGlyph className={`size-5 ${current === -1 ? "" : "text-accent-ink"}`} />
             </IslandButton>
             <Reorder.Group
               as="div"
@@ -100,15 +101,16 @@ export function CenterIsland({ extra }: { extra?: ReactNode }) {
             exit={{ opacity: 0, scale: 0.9 }}
             transition={spring}
           >
-            <IslandButton label="Home" active={current === -1} onClick={() => wm().goTo(-1)}>
-              <House className="size-[18px]" strokeWidth={1.5} />
-            </IslandButton>
             <IslandButton
               label="Search (Ctrl+Space)"
               active={spotlight}
               onClick={() => wm().setSpotlight(!spotlight)}
             >
               <Search className="size-[18px]" strokeWidth={1.5} />
+            </IslandButton>
+            {/* Home is the Kiln logo, in the middle of the island. */}
+            <IslandButton label="Home" active={current === -1} onClick={() => wm().goTo(-1)}>
+              <KilnGlyph className={`size-5 ${current === -1 ? "" : "text-accent-ink"}`} />
             </IslandButton>
             <IslandButton label="Task view (Ctrl+Alt+Tab)" onClick={() => wm().setTaskView(true)}>
               <LayoutGrid className="size-[18px]" strokeWidth={1.5} />
