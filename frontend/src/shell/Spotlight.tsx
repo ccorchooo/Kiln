@@ -52,6 +52,11 @@ function Preview({ r }: { r: Result | undefined }) {
   );
 }
 
+function resultsFor(q: string): Result[] {
+  const found = search(q);
+  return q.trim() ? [...found, askResult(q.trim())] : found;
+}
+
 export function Spotlight() {
   const open = useWM((s) => s.spotlight);
   const assistant = useAuth((s) => s.assistantName);
@@ -60,17 +65,12 @@ export function Spotlight() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const results = useMemo(() => {
-    if (!open) return [];
-    const found = search(q);
-    return q.trim() ? (found.length ? [...found, askResult(q.trim())] : [askResult(q.trim())]) : found;
-  }, [q, open]);
+  const results = useMemo(() => (open ? resultsFor(q) : []), [q, open]);
 
   useEffect(() => {
     if (open) {
       setQ("");
       setSel(0);
-      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
   useEffect(() => setSel(0), [q]);
@@ -88,7 +88,7 @@ export function Spotlight() {
     r.run();
   };
 
-  const onKey = (e: KeyboardEvent) => {
+  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
     // The input stays mounted during the exit animation; ignore keys once closing.
     if (!useWM.getState().spotlight) return;
     if (e.key === "ArrowDown") {
@@ -99,7 +99,9 @@ export function Spotlight() {
       setSel((s) => Math.max(s - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      run(results[sel]);
+      // Use the input's live value: a fast typist can press Enter before the list re-renders.
+      const live = e.currentTarget.value;
+      run(live === q ? results[sel] : resultsFor(live)[0]);
     } else if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && q.trim()) {
       e.preventDefault();
       run(askResult(q.trim()));
@@ -137,6 +139,7 @@ export function Spotlight() {
               <Search className="size-5 shrink-0 text-ink-2" strokeWidth={1.5} />
               <input
                 ref={inputRef}
+                autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={onKey}

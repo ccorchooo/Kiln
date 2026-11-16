@@ -1,9 +1,9 @@
 import { AnimatePresence, motion, Reorder } from "framer-motion";
 import { ChevronDown, House, LayoutGrid, Plus, Search } from "lucide-react";
 import { useState, type MouseEvent, type ReactNode } from "react";
-import { AiPill } from "../components/AiPill";
-import { ClockPill } from "../components/ClockPill";
 import { spring } from "../components/motion";
+import { useWidgets } from "../widgets/store";
+import { Widget } from "../widgets/Widget";
 import { APPS } from "./apps";
 import { useWM } from "./wm";
 
@@ -235,7 +235,7 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
   const taskView = useWM((s) => s.taskView);
   const orbInPill = current !== -1 || taskView;
   const [sheet, setSheet] = useState(false);
-  const openAssistant = () => useWM.getState().openApp("assistant");
+  const widgets = useWidgets((s) => s.widgets);
 
   if (mobile) {
     return (
@@ -267,7 +267,7 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
         <AnimatePresence>
           {sheet && (
             <motion.div
-              className="fixed inset-x-2 top-[max(8px,env(safe-area-inset-top))] z-40 flex flex-col items-center gap-2"
+              className="fixed inset-x-2 top-[max(8px,env(safe-area-inset-top))] z-40 flex flex-wrap justify-center gap-2"
               initial={{ y: -80, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: -80, opacity: 0 }}
@@ -276,8 +276,9 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
               dragConstraints={{ top: 0, bottom: 0 }}
               onDragEnd={(_, info) => info.offset.y < -40 && setSheet(false)}
             >
-              <AiPill withOrb={orbInPill} onClick={openAssistant} />
-              <ClockPill />
+              {widgets.map((w) => (
+                <Widget key={w.id} w={w} interactive withOrb={orbInPill} placement="down" align="start" />
+              ))}
             </motion.div>
           )}
         </AnimatePresence>
@@ -289,7 +290,7 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
     // On lock, the outgoing bar fades fast; the shared pills (island → password, tray → lock row)
     // carry the motion via layoutId.
     <motion.div
-      className="pointer-events-none fixed inset-x-3 bottom-3 z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-3"
+      className="pointer-events-none fixed inset-x-3 bottom-3 z-30 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3"
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
       <motion.div
@@ -303,9 +304,13 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
       <div className="pointer-events-auto">
         <CenterIsland />
       </div>
-      <div className="pointer-events-auto flex items-center gap-3 justify-self-end">
-        <AiPill withOrb={orbInPill} onClick={openAssistant} />
-        <ClockPill />
+      <div
+        className="glass no-scrollbar pointer-events-auto flex h-12 max-w-full min-w-0 items-center gap-0.5 justify-self-end overflow-x-auto rounded-full px-1"
+        aria-label="Widgets"
+      >
+        {widgets.map((w) => (
+          <Widget key={w.id} w={w} interactive withOrb={orbInPill} variant="segment" />
+        ))}
       </div>
     </motion.div>
   );

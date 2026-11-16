@@ -3,7 +3,8 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 2 of 10.** Security core, lock screen, wallpaper and orb, plus the desktop shell
+> **Status: Phase 3 of 10.** Taskbar widgets with live metrics are in too.
+> Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
 > (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
 > until their phases land. See [Roadmap](#roadmap).
 
@@ -107,6 +108,19 @@ that `local-ai run` starts at `http://127.0.0.1:11435/v1`, with `qwen3.5:4b`. Vo
 TTS at `:8891` and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you
 configure one.
 
+## Widgets
+
+Settings → Taskbar (or search "widgets") holds the library: Ember, CPU, GPU, memory, temperatures, disk,
+network/Tailscale, clock (seconds, second time zone), weather (Open-Meteo, no key), media, updates,
+notifications, battery and uptime. Each can be compact or expanded (with a mini chart) and can be shown on
+the lock screen. Widget config lives on the server, so it's the same on every device.
+
+All widgets share one `/ws/metrics` socket. The server samples only the topics someone has subscribed to,
+skips GPU queries while every tab is hidden, and throttles hidden tabs to one update every 5 seconds.
+**While a session is locked, the server only sends the topics of lock-screen widgets.** It also strips
+sensitive fields: the Tailscale IP and exit node, and media titles unless that widget allows them. This
+filtering happens on the server, not in the browser.
+
 ## Optional tools
 
 Kiln uses these when they're installed and degrades gracefully when they're not:
@@ -151,7 +165,7 @@ need re-authentication.
 ```bash
 # backend
 cd backend && uv venv .venv && uv pip install -p .venv/bin/python -e '.[dev]'
-.venv/bin/pytest            # 57 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media
+.venv/bin/pytest            # 80 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets
 .venv/bin/ruff check app tests && .venv/bin/mypy app
 
 # run against a scratch config (doesn't touch ~/.config/kiln)
@@ -181,13 +195,17 @@ backend/app/
   auth/            passwords (Argon2id/TOTP), sessions, CSRF guards, rate limiting, routes
   audit/           append-only hash-chained audit log
   fs/jail.py       the path-validation gate
-  system/          sunrise/sunset, bind/exposure checks, tool discovery (yay/paru), media (playerctl)
+  system/          sunrise/sunset, bind/exposure checks, tool discovery (yay/paru), media (playerctl),
+                   metrics collectors + MetricsHub (one shared sampling loop)
+  widgets.py       widget config validation, lock-screen filter/sanitizer
+  routes_metrics.py  /ws/metrics, snapshot, widget settings
   routes_core.py   appearance, audit API, /ws/events
 frontend/src/
   app/             App, LockScreen, PasswordPill
   shell/           window manager store, Strip (Home + workspaces + task view), Window,
                    WorkspacePage (tiling/floating), Taskbar (dock, island, tray), Spotlight, app registry
-  apps/            Settings (appearance, dock, devices, security); placeholders for later phases
+  apps/            Settings (appearance, dock, taskbar widgets, devices, security); placeholders
+  widgets/         widget registry + pill/segment + popovers, metrics socket/store, formatters
   three/           shared canvas: wallpaper shader → composite → orb; OrbAnchor
   theme/           tokens/themes (+ WCAG checker), appearance controller
   lib/             api client, stores, events socket, idle lock
@@ -198,7 +216,7 @@ frontend/src/
 
 1. ✅ Skeleton, security, lock screen, wallpaper, orb (idle)
 2. ✅ Shell: three-pill taskbar, Spotlight, workspaces + tiling WM, task view, lock ↔ desktop collapse
-3. Widgets and the metrics WebSocket
+3. ✅ Widgets (14 types), Settings → Taskbar, lock-screen toggles, `/ws/metrics`
 4. Terminal (PTY over WebSocket)
 5. File manager
 6. Ember (text): tools, risk classifier, approvals

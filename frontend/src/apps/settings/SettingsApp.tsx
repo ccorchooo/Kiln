@@ -1,6 +1,16 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Reorder } from "framer-motion";
-import { GripVertical, Laptop, Lock, Monitor, PanelBottom, Power, Shield, Smartphone } from "lucide-react";
+import {
+  GripVertical,
+  Laptop,
+  LayoutDashboard,
+  Lock,
+  Monitor,
+  PanelBottom,
+  Power,
+  Shield,
+  Smartphone,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { api } from "../../lib/api";
 import { lockNow, panicNow } from "../../lib/auth";
@@ -10,10 +20,12 @@ import { APP_ORDER, APPS, MAX_PINNED } from "../../shell/apps";
 import { useWM } from "../../shell/wm";
 import { applyAppearance, resolveQuality, type Appearance } from "../../theme/useAppearance";
 import { useSettingsSection, type SettingsSection } from "./section";
+import { TaskbarSection } from "./TaskbarSection";
 
 const SECTIONS: { id: SettingsSection; label: string; icon: typeof Monitor }[] = [
   { id: "appearance", label: "Appearance", icon: Monitor },
   { id: "dock", label: "Dock", icon: PanelBottom },
+  { id: "taskbar", label: "Taskbar", icon: LayoutDashboard },
   { id: "sessions", label: "Devices", icon: Laptop },
   { id: "security", label: "Security", icon: Shield },
 ];
@@ -286,7 +298,7 @@ function SecuritySection() {
       </Row>
       <Row
         title="Password, two-factor and audit log"
-        hint="Coming to this page with the widgets work in Phase 3. Use `kiln set-password` and `kiln totp enable` meanwhile."
+        hint="Use `kiln set-password` and `kiln totp enable` on the host for now; this page gets them later."
       >
         <span />
       </Row>
@@ -322,6 +334,7 @@ export default function SettingsApp() {
         </h2>
         {section === "appearance" && <AppearanceSection />}
         {section === "dock" && <DockSection />}
+        {section === "taskbar" && <TaskbarSection />}
         {section === "sessions" && <SessionsSection />}
         {section === "security" && <SecuritySection />}
       </div>

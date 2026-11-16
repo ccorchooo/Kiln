@@ -12,6 +12,7 @@ from app.auth.sessions import SessionStore
 from app.config import Config
 from app.db import Database
 from app.events import EventHub
+from app.system.hub import MetricsHub
 
 PanicHook = Callable[[], Awaitable[None]]
 
@@ -24,6 +25,7 @@ class AppState:
     sessions: SessionStore
     credentials: Credentials
     limiter: LoginRateLimiter
+    metrics: MetricsHub
     events: EventHub = field(default_factory=EventHub)
     # Registered by subsystems (terminals, running AI tools) to kill everything on panic.
     panic_hooks: list[PanicHook] = field(default_factory=list)
@@ -38,4 +40,5 @@ class AppState:
             sessions=SessionStore(db, config.auth),
             credentials=Credentials(db),
             limiter=LoginRateLimiter(db, config.auth),
+            metrics=MetricsHub(config),
         )

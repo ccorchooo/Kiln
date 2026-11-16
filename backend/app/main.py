@@ -16,6 +16,7 @@ from app.auth.deps import UNSAFE_METHODS, origin_ok
 from app.auth.routes import router as auth_router
 from app.config import DATA_DIR, Config, load_config
 from app.routes_core import router as core_router
+from app.routes_metrics import router as metrics_router
 from app.state import AppState
 
 log = logging.getLogger("kiln")
@@ -109,11 +110,13 @@ def create_app(config: Config | None = None) -> FastAPI:
         await state.db.open()
         await state.sessions.purge_expired()
         await state.audit.record("server.start", actor="system", port=config.server.port, bind=config.server.bind)
+        state.metrics.start()
         task = asyncio.create_task(_housekeeping(state))
         try:
             yield
         finally:
             task.cancel()
+            await state.metrics.stop()
             await state.audit.record("server.stop", actor="system")
             await state.db.close()
 
@@ -122,6 +125,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.add_middleware(SecurityMiddleware)
     app.include_router(auth_router)
     app.include_router(core_router)
+    app.include_router(metrics_router)
 
     @app.get("/api/health")
     async def health() -> dict[str, str]:

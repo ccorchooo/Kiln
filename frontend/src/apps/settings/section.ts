@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useWM } from "../../shell/wm";
 
-export type SettingsSection = "appearance" | "dock" | "sessions" | "security";
+export type SettingsSection = "appearance" | "dock" | "taskbar" | "sessions" | "security";
 
 export const useSettingsSection = create<{ section: SettingsSection; set: (s: SettingsSection) => void }>(
   (set) => ({

@@ -1,5 +1,5 @@
 import { AnimatePresence, LayoutGroup } from "framer-motion";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { Toaster } from "../components/Toaster";
 import { lockNow, panicNow, refreshAuth } from "../lib/auth";
 import { EventSocket } from "../lib/events";
@@ -7,6 +7,7 @@ import { useAuth } from "../lib/store";
 import { toastError } from "../lib/toasts";
 import { useIdleLock } from "../lib/useIdleLock";
 import { useAppearance, type Appearance } from "../theme/useAppearance";
+import { MetricsSocket, useWidgets, widgetTopics } from "../widgets/store";
 import { LockScreen } from "./LockScreen";
 import { Shell } from "../shell/Shell";
 
@@ -40,6 +41,9 @@ export function App() {
           case "session.ended":
             auth.setStatus("signedOut");
             break;
+          case "widgets":
+            void useWidgets.getState().load();
+            break;
           case "appearance":
             accept(ev.data as unknown as Appearance);
             break;
@@ -50,6 +54,27 @@ export function App() {
     socket.start();
     return () => socket.stop();
   }, [hasSession, accept]);
+
+  // Widget config + live metrics for the taskbar and the lock screen (server filters while locked).
+  const widgets = useWidgets((s) => s.widgets);
+  const topicsKey = widgetTopics(widgets).join(",");
+  useEffect(() => {
+    if (hasSession) void useWidgets.getState().load();
+  }, [hasSession, status]);
+  const metricsRef = useRef<MetricsSocket | null>(null);
+  useEffect(() => {
+    if (!hasSession) return;
+    const sock = new MetricsSocket();
+    metricsRef.current = sock;
+    sock.start(widgetTopics(useWidgets.getState().widgets));
+    return () => {
+      sock.stop();
+      metricsRef.current = null;
+    };
+  }, [hasSession]);
+  useEffect(() => {
+    metricsRef.current?.setTopics(topicsKey ? topicsKey.split(",") : []);
+  }, [topicsKey]);
 
   useIdleLock(status === "unlocked");
 

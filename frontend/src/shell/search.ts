@@ -125,6 +125,14 @@ function staticResults(): Result[] {
       run: () => openSettings("dock"),
     },
     {
+      id: "set:widgets",
+      title: "Taskbar widgets",
+      subtitle: "Add, reorder and choose lock-screen widgets",
+      icon: Monitor,
+      keywords: ["widgets", "taskbar", "lock screen", "weather", "cpu", "gpu"],
+      run: () => openSettings("taskbar"),
+    },
+    {
       id: "set:sessions",
       title: "Signed-in devices",
       icon: Gauge,

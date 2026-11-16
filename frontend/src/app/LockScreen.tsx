@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { AiPill } from "../components/AiPill";
-import { ClockPill } from "../components/ClockPill";
+import { useMemo } from "react";
 import { fade } from "../components/motion";
 import { OrbAnchor } from "../three/OrbAnchor";
+import { useWidgets } from "../widgets/store";
+import { Widget } from "../widgets/Widget";
 import { PasswordPill } from "./PasswordPill";
 
 /**
@@ -11,6 +12,8 @@ import { PasswordPill } from "./PasswordPill";
  * Widgets here must never show sensitive content.
  */
 export function LockScreen() {
+  const all = useWidgets((s) => s.widgets);
+  const widgets = useMemo(() => all.filter((w) => w.lock), [all]);
   return (
     <motion.main
       className="fixed inset-0 z-10"
@@ -24,9 +27,10 @@ export function LockScreen() {
       />
       <div className="absolute inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] flex flex-col items-stretch gap-3 md:inset-x-auto md:bottom-6 md:left-6 md:flex-row md:items-center">
         <PasswordPill />
-        <div className="flex justify-center gap-3 md:contents">
-          <AiPill withOrb={false} />
-          <ClockPill />
+        <div className="flex flex-wrap justify-center gap-3 md:contents">
+          {widgets.map((w) => (
+            <Widget key={w.id} w={w} interactive={false} />
+          ))}
         </div>
       </div>
     </motion.main>
