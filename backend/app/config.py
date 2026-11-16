@@ -124,6 +124,14 @@ class PackagesConfig:
 
 
 @dataclass
+class TerminalConfig:
+    shell: str = ""  # empty = $SHELL, then the passwd shell, then /bin/bash
+    keep_alive_minutes: float = 30.0  # detached terminals are killed after this long
+    max_sessions: int = 16
+    scrollback_bytes: int = 262144
+
+
+@dataclass
 class FeatureFlags:
     automations: bool = False
     clipboard: bool = False
@@ -145,6 +153,7 @@ class Config:
     approvals: ApprovalConfig = field(default_factory=ApprovalConfig)
     packages: PackagesConfig = field(default_factory=PackagesConfig)
     features: FeatureFlags = field(default_factory=FeatureFlags)
+    terminal: TerminalConfig = field(default_factory=TerminalConfig)
     data_dir: str = str(DATA_DIR)
 
     @property

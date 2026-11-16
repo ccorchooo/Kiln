@@ -31,6 +31,7 @@ export interface AppDef {
 
 const SettingsApp = lazy(() => import("../apps/settings/SettingsApp"));
 const AssistantPlaceholder = lazy(() => import("../apps/assistant/AssistantPlaceholder"));
+const TerminalApp = lazy(() => import("../apps/terminal/TerminalApp"));
 
 export const APPS: Record<string, AppDef> = {
   assistant: {
@@ -52,7 +53,7 @@ export const APPS: Record<string, AppDef> = {
     keywords: ["shell", "zsh", "console", "pty", "command"],
     pairable: true,
     multiInstance: true,
-    phase: 4,
+    component: TerminalApp,
   },
   files: {
     id: "files",

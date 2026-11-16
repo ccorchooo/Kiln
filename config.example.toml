@@ -73,6 +73,12 @@ timeout_minutes = 30
 [packages]
 aur_helper = "yay"              # yay | paru | auto (yay first, then paru)
 
+[terminal]
+# shell = "/usr/bin/zsh"        # default: $SHELL, then the account's login shell, then /bin/bash
+# keep_alive_minutes = 30       # detached terminals are closed after this long
+# max_sessions = 16
+# scrollback_bytes = 262144     # output replayed when a browser re-attaches
+
 [features]
 automations = false
 clipboard = false

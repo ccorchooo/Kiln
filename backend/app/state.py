@@ -13,6 +13,7 @@ from app.config import Config
 from app.db import Database
 from app.events import EventHub
 from app.system.hub import MetricsHub
+from app.terminal.manager import TerminalManager
 
 PanicHook = Callable[[], Awaitable[None]]
 
@@ -26,6 +27,7 @@ class AppState:
     credentials: Credentials
     limiter: LoginRateLimiter
     metrics: MetricsHub
+    terminals: TerminalManager
     events: EventHub = field(default_factory=EventHub)
     # Registered by subsystems (terminals, running AI tools) to kill everything on panic.
     panic_hooks: list[PanicHook] = field(default_factory=list)
@@ -33,12 +35,17 @@ class AppState:
     @classmethod
     def build(cls, config: Config) -> AppState:
         db = Database(config.db_path)
-        return cls(
+        audit = AuditLog(db)
+        terminals = TerminalManager(config, audit)
+        state = cls(
             config=config,
             db=db,
-            audit=AuditLog(db),
+            audit=audit,
             sessions=SessionStore(db, config.auth),
             credentials=Credentials(db),
             limiter=LoginRateLimiter(db, config.auth),
             metrics=MetricsHub(config),
+            terminals=terminals,
         )
+        state.panic_hooks.append(terminals.panic)
+        return state

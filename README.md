@@ -3,7 +3,7 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 3 of 10.** Taskbar widgets with live metrics are in too.
+> **Status: Phase 4 of 10.** The terminal is real now; widgets with live metrics arrived in Phase 3.
 > Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
 > (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
 > until their phases land. See [Roadmap](#roadmap).
@@ -108,6 +108,28 @@ that `local-ai run` starts at `http://127.0.0.1:11435/v1`, with `qwen3.5:4b`. Vo
 TTS at `:8891` and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you
 configure one.
 
+## Terminal
+
+The Terminal app runs your login shell (`$SHELL`, zsh here) in a real PTY on the server, as you, never root.
+
+- **Tabs and panes:** each tab can split into two panes, side by side or stacked.
+- **Persistence:** reloading the page or switching devices re-attaches to the same shells with their
+  recent output (256 KB replay buffer). A shell with nobody attached keeps running for 30 minutes
+  (`[terminal] keep_alive_minutes`). Locking keeps shells alive; panic kills them. Closing the Terminal
+  window ends its shells.
+- **One viewer at a time:** opening the same shell elsewhere moves it there. The old view offers "Use here"
+  to take it back.
+- **Copy and paste:** copy-on-select, `Ctrl+Shift+C` / `Ctrl+Shift+V`, and a right-click menu.
+  `Ctrl+Shift+F` searches.
+- **Links:** URLs and paths under your home folder are clickable. Paths open in Files once Phase 5 lands.
+- **Ember:** "Explain selection" and "Fix last error" send the text to Ember (Phase 6).
+- **Snippets:** the bookmark button holds saved commands, which run in the focused pane with one click.
+- **Phone:** an extra key row (Esc, Tab, sticky Ctrl/Alt, arrows, `|`, `~`, `/`).
+- **Audit:** every shell's start and end is audited. What you type is never logged; the terminal is your
+  direct shell and doesn't go through Ember's approvals.
+
+Fresh zsh shells will show the Powerlevel10k setup wizard until it is configured (`p10k configure`).
+
 ## Widgets
 
 Settings → Taskbar (or search "widgets") holds the library: Ember, CPU, GPU, memory, temperatures, disk,
@@ -165,7 +187,7 @@ need re-authentication.
 ```bash
 # backend
 cd backend && uv venv .venv && uv pip install -p .venv/bin/python -e '.[dev]'
-.venv/bin/pytest            # 80 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets
+.venv/bin/pytest            # 94 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets, terminal
 .venv/bin/ruff check app tests && .venv/bin/mypy app
 
 # run against a scratch config (doesn't touch ~/.config/kiln)
@@ -199,12 +221,15 @@ backend/app/
                    metrics collectors + MetricsHub (one shared sampling loop)
   widgets.py       widget config validation, lock-screen filter/sanitizer
   routes_metrics.py  /ws/metrics, snapshot, widget settings
+  terminal/        PTY manager (spawn, replay buffer, keep-alive, titles, panic kill)
+  routes_terminal.py /api/terminals, /ws/terminal/{id}, /api/snippets
   routes_core.py   appearance, audit API, /ws/events
 frontend/src/
   app/             App, LockScreen, PasswordPill
   shell/           window manager store, Strip (Home + workspaces + task view), Window,
                    WorkspacePage (tiling/floating), Taskbar (dock, island, tray), Spotlight, app registry
   apps/            Settings (appearance, dock, taskbar widgets, devices, security); placeholders
+  apps/terminal/   xterm.js panes, tabs/splits, snippets, search, key row
   widgets/         widget registry + pill/segment + popovers, metrics socket/store, formatters
   three/           shared canvas: wallpaper shader → composite → orb; OrbAnchor
   theme/           tokens/themes (+ WCAG checker), appearance controller
@@ -217,7 +242,7 @@ frontend/src/
 1. ✅ Skeleton, security, lock screen, wallpaper, orb (idle)
 2. ✅ Shell: three-pill taskbar, Spotlight, workspaces + tiling WM, task view, lock ↔ desktop collapse
 3. ✅ Widgets (14 types), Settings → Taskbar, lock-screen toggles, `/ws/metrics`
-4. Terminal (PTY over WebSocket)
+4. ✅ Terminal: real PTY over WebSocket, tabs, split panes, persistence, snippets, mobile key row
 5. File manager
 6. Ember (text): tools, risk classifier, approvals
 7. Voice: STT/TTS, full orb states, captions
