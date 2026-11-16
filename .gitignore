@@ -11,3 +11,6 @@ frontend/test-results/
 *.pem
 build/
 *.tsbuildinfo
+
+# Personal Obsidian vault (notes, not code)
+.vault/
