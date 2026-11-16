@@ -1,0 +1,19 @@
+[Unit]
+Description=Kiln: warm, minimal web shell for this machine
+Documentation=file://%h/Documents/connecta/README.md
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/kiln/venv/bin/kiln serve
+Restart=on-failure
+RestartSec=3
+UMask=0077
+Environment=PYTHONUNBUFFERED=1
+# NoNewPrivileges is intentionally NOT set: the ROOT-tier approval flow runs `sudo -S`,
+# which needs setuid. Kiln itself refuses to start as root.
+PrivateTmp=no
+
+[Install]
+WantedBy=default.target

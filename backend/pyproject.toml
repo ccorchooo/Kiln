@@ -1,0 +1,51 @@
+[project]
+name = "kiln"
+version = "0.1.0"
+description = "Kiln: a warm, minimal, AI-centered web shell for CachyOS"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "argon2-cffi>=23.1",
+  "pyotp>=2.9",
+  "aiosqlite>=0.20",
+  "psutil>=6.0",
+  "qrcode>=8.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "httpx>=0.27", "ruff>=0.7", "mypy>=1.13"]
+
+[project.scripts]
+kiln = "app.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC"]
+ignore = ["S101", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+# _COLS is a module constant interpolated into SQL; all values are bound parameters.
+"app/auth/sessions.py" = ["S608"]
+"tests/*" = ["S105", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

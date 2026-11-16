@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "@fontsource-variable/newsreader/opsz.css";
+@import "@fontsource-variable/newsreader/opsz-italic.css";
+@import "@fontsource-variable/figtree/wght.css";
+@import "@fontsource/geist-mono/latin-400.css";
+@import "@fontsource/geist-mono/latin-500.css";
+
+/* Tokens are written at runtime by applyPalette(); these are the Clay-dark defaults for first paint. */
+:root {
+  --bg: #1c1916;
+  --surface: rgb(42 38 34 / 0.6);
+  --surface-solid: #29251f;
+  --surface-strong: rgb(42 38 34 / 0.8);
+  --text: #eee7dc;
+  --text-2: #a89e91;
+  --hairline: rgb(238 231 220 / 0.1);
+  --hairline-strong: rgb(238 231 220 / 0.18);
+  --accent: #d97757;
+  --accent-ink: #e59478;
+  --accent-fill: #d97757;
+  --on-accent: #1c1916;
+  --accent-soft: #4a3127;
+  --danger: #cf6f57;
+  --danger-ink: #e08a72;
+  --warn: #d6ae55;
+  --warn-ink: #ddb866;
+  --success: #8aa77a;
+  --success-ink: #9db88e;
+  --shadow-color: rgb(0 0 0 / 0.45);
+  --shadow-color-soft: rgb(0 0 0 / 0.25);
+  --wp-0: #1c1916;
+  --wp-1: #4a2a1e;
+  --wp-2: #7a3e28;
+  --wp-3: #3a2a2c;
+  --wp-4: #2b241f;
+  --orb-0: #a8442a;
+  --orb-1: #e0875f;
+  --orb-2: #f6c9a0;
+  --blur: 28px;
+  color-scheme: dark;
+}
+
+@theme {
+  --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "JetBrains Mono", monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-solid: var(--surface-solid);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-fill: var(--accent-fill);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-ink: var(--danger-ink);
+  --color-warn: var(--warn);
+  --color-warn-ink: var(--warn-ink);
+  --color-success: var(--success);
+  --color-success-ink: var(--success-ink);
+
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-window: 24px;
+
+  /* 1.25 type scale */
+  --text-xs: 0.8rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: 2.441rem;
+  --text-4xl: 3.052rem;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Light/dark crossfade (~1s), toggled briefly by the appearance controller. */
+html.mode-transition *,
+html.mode-transition *::before,
+html.mode-transition *::after {
+  transition:
+    background-color 1s ease,
+    color 1s ease,
+    border-color 1s ease,
+    box-shadow 1s ease,
+    fill 1s ease !important;
+}
+
+.font-serif {
+  font-optical-sizing: auto;
+}
+
+.heading-display {
+  font-family: var(--font-serif);
+  font-weight: 420;
+  letter-spacing: -0.015em;
+  font-optical-sizing: auto;
+}
+
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Frosted glass surface */
+.glass {
+  background: var(--surface);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+    0 10px 40px -12px var(--shadow-color),
+    0 2px 10px -4px var(--shadow-color-soft);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--surface-solid);
+  }
+}
+
+/* Soft clay focus ring, keyboard only */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.pill-focus:focus-within {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent),
+    0 10px 40px -12px var(--shadow-color);
+}
+
+/* Static wallpaper (quality Low/Off, or before WebGL is up) */
+.wallpaper-static {
+  background:
+    radial-gradient(60% 70% at 18% 30%, var(--wp-1) 0%, transparent 70%),
+    radial-gradient(55% 60% at 80% 25%, var(--wp-4) 0%, transparent 70%),
+    radial-gradient(70% 65% at 70% 85%, var(--wp-2) 0%, transparent 72%),
+    radial-gradient(60% 60% at 15% 90%, var(--wp-3) 0%, transparent 70%), var(--wp-0);
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* CSS orb fallback (quality Off / no WebGL): morphing radial-gradient blob */
+.orb-fallback {
+  background:
+    radial-gradient(circle at 34% 30%, var(--orb-2) 0%, transparent 46%),
+    radial-gradient(circle at 60% 65%, var(--orb-0) 0%, transparent 70%),
+    radial-gradient(circle at 50% 50%, var(--orb-1) 0%, var(--orb-0) 100%);
+  border-radius: 48% 52% 50% 50% / 50% 46% 54% 50%;
+  animation: orb-morph 9s ease-in-out infinite;
+  box-shadow: 0 30px 80px -30px var(--shadow-color);
+}
+@keyframes orb-morph {
+  0%,
+  100% {
+    border-radius: 48% 52% 50% 50% / 50% 46% 54% 50%;
+    transform: scale(1);
+  }
+  33% {
+    border-radius: 54% 46% 47% 53% / 46% 54% 48% 52%;
+    transform: scale(1.025);
+  }
+  66% {
+    border-radius: 46% 54% 53% 47% / 53% 48% 52% 47%;
+    transform: scale(0.985);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-fallback {
+    animation: orb-breathe 4s ease-in-out infinite;
+  }
+  @keyframes orb-breathe {
+    50% {
+      transform: scale(1.03);
+    }
+  }
+}
+
+input::placeholder {
+  color: var(--text-2);
+  opacity: 1;
+}
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}

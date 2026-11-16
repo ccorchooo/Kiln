@@ -1,0 +1,78 @@
+# Kiln configuration: ~/.config/kiln/config.toml
+# Any key can be overridden with an environment variable: KILN_<SECTION>__<KEY>=value
+# Secrets never live here. The password (Argon2id) and TOTP secret are stored in the
+# database; set them with `kiln set-password` and `kiln totp enable`.
+
+[server]
+port = 8443
+# "0.0.0.0" = all interfaces (pair it with the firewall rules in README → Firewall),
+# "tailscale" = bind only to this machine's Tailscale IPv4, or a literal IP.
+bind = "0.0.0.0"
+tls_cert = "~/.config/kiln/tls/cert.pem"
+tls_key = "~/.config/kiln/tls/key.pem"
+# Extra origins allowed for state-changing requests (rarely needed):
+# extra_origins = ["https://cachyos.tail1234.ts.net:8443"]
+
+[auth]
+session_idle_hours = 12
+session_absolute_days = 7
+idle_lock_minutes = 10          # 0 disables auto-lock
+reauth_window_minutes = 5       # how long a password re-confirmation lasts
+lockout_threshold = 10          # failed attempts per IP before a hard lockout
+lockout_minutes = 15
+backoff_after = 3               # exponential backoff starts after this many failures
+
+[user]
+display_name = "Augusto"
+assistant_name = "Ember"
+
+[location]                      # weather + sunrise/sunset light/dark switching
+city = "Buenos Aires"
+latitude = -34.6037
+longitude = -58.3816
+timezone = "America/Argentina/Buenos_Aires"
+
+[appearance]
+theme = "clay"                  # clay | oat | cinder | sage | dusk | graphite
+mode = "auto"                   # auto | light | dark
+auto_source = "sun"             # "sun" (sunrise/sunset) or "fixed" (light_at / dark_at)
+light_at = "07:00"
+dark_at = "19:30"
+quality = "auto"                # auto | high | balanced | low | off
+
+[llm]                           # any OpenAI-compatible endpoint; never a cloud API unless you set one
+base_url = "http://127.0.0.1:11435/v1"   # AXION router started by `local-ai run`
+model = "qwen3.5:4b"
+api_key = "axion-local"
+context_length = 16384
+temperature = 0.7
+
+[voice]
+stt_model = "small"             # faster-whisper model
+tts_base_url = "http://127.0.0.1:8891/v1" # AXION TTS (OpenAI-compatible /v1/audio/speech)
+tts_voice = ""
+wake_word = false
+
+[files]
+jail_root = "~"
+denylist = [
+  "~/.ssh", "~/.gnupg", "~/.password-store", "~/.local/share/keyrings",
+  "~/.mozilla", "~/.config/google-chrome", "~/.config/chromium", "~/.config/BraveSoftware",
+  "~/.config/kiln", "~/.local/share/kiln",
+  "**/.env", "**/.env.*",
+]
+max_read_bytes = 10485760
+
+[approvals]                     # policy per risk tier
+safe = "auto"                   # auto | tap
+change = "tap"                  # tap | typed
+danger = "typed"
+root = "typed"
+timeout_minutes = 30
+
+[features]
+automations = false
+clipboard = false
+screenshots = false
+media = false
+notes = false
