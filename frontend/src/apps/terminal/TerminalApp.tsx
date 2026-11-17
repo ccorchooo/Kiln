@@ -29,6 +29,7 @@ import {
   dropLayout,
   loadLayout,
   saveLayout,
+  takePendingCommand,
   takePendingCwd,
   useTermPrefs,
   type TermLayout,
@@ -42,10 +43,10 @@ interface Created {
   title: string;
 }
 
-async function createTerm(cwd?: string | null): Promise<string> {
+async function createTerm(cwd?: string | null, command?: string | null): Promise<string> {
   const r = await api<Created>("/api/terminals", {
     method: "POST",
-    body: { cols: 100, rows: 30, cwd: cwd ?? undefined },
+    body: { cols: 100, rows: 30, cwd: cwd ?? undefined, command: command ?? undefined },
   });
   return r.id;
 }
@@ -183,7 +184,7 @@ export default function TerminalApp({ windowId }: AppProps) {
   useEffect(() => {
     if (layout?.tabs.length) return;
     let cancelled = false;
-    createTerm(takePendingCwd())
+    createTerm(takePendingCwd(), takePendingCommand())
       .then((id) => {
         if (cancelled) return killTerm(id);
         const next: TermLayout = { tabs: [{ id: tabId(), panes: [id], split: "row", focus: 0 }], active: 0 };

@@ -20,6 +20,7 @@ from app.routes_ember import router as ember_router
 from app.routes_fs import install_error_handlers
 from app.routes_fs import router as fs_router
 from app.routes_metrics import router as metrics_router
+from app.routes_system import router as system_router
 from app.routes_terminal import router as terminal_router
 from app.state import AppState
 
@@ -138,6 +139,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(terminal_router)
     app.include_router(fs_router)
     app.include_router(ember_router)
+    app.include_router(system_router)
     install_error_handlers(app)
 
     @app.get("/api/health")

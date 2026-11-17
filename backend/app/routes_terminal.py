@@ -29,6 +29,8 @@ MAX_SNIPPETS = 200
 
 class TerminalIn(BaseModel):
     cwd: str | None = Field(default=None, max_length=4096)
+    # Typed into the new shell (e.g. a package install from the System app); the user sees and runs it.
+    command: str | None = Field(default=None, max_length=4096)
     cols: int = Field(default=80, ge=1, le=10000)
     rows: int = Field(default=24, ge=1, le=10000)
 
@@ -40,6 +42,8 @@ async def create_terminal(body: TerminalIn, request: Request, sess: SessionDep, 
     except TerminalError as exc:
         status = 409 if exc.code == "too_many" else 500
         raise HTTPException(status, detail={"code": exc.code, "message": exc.message}) from exc
+    if body.command:
+        state.terminals.write(term.id, (body.command.replace("\n", " ") + "\n").encode())
     return {
         "id": term.id,
         "title": term.title(),

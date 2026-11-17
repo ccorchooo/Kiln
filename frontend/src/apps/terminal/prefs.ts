@@ -80,3 +80,14 @@ export function takePendingCwd(): string | null {
 export function setPendingCwd(path: string): void {
   pendingCwd = path;
 }
+
+/** Command typed into the next new terminal (the user sees it run, sudo prompts included). */
+let pendingCommand: string | null = null;
+export function takePendingCommand(): string | null {
+  const c = pendingCommand;
+  pendingCommand = null;
+  return c;
+}
+export function setPendingCommand(command: string): void {
+  pendingCommand = command;
+}

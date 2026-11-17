@@ -8,7 +8,7 @@ import { useAuth } from "../lib/store";
 import { toastError } from "../lib/toasts";
 import { useIdleLock } from "../lib/useIdleLock";
 import { useAppearance, type Appearance } from "../theme/useAppearance";
-import { MetricsSocket, useWidgets, widgetTopics } from "../widgets/store";
+import { extraTopics, MetricsSocket, useExtraTopics, useWidgets, widgetTopics } from "../widgets/store";
 import { toggleListening } from "../ember/voice";
 import { LockScreen } from "./LockScreen";
 import { Shell } from "../shell/Shell";
@@ -59,7 +59,8 @@ export function App() {
 
   // Widget config + live metrics for the taskbar and the lock screen (server filters while locked).
   const widgets = useWidgets((s) => s.widgets);
-  const topicsKey = widgetTopics(widgets).join(",");
+  const extra = useExtraTopics((s) => extraTopics(s.counts).join(","));
+  const topicsKey = [...new Set([...widgetTopics(widgets), ...extra.split(",").filter(Boolean)])].join(",");
   useEffect(() => {
     if (hasSession) void useWidgets.getState().load();
   }, [hasSession, status]);

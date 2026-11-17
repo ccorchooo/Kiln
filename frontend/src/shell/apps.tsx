@@ -36,6 +36,8 @@ const TerminalApp = lazy(() => import("../apps/terminal/TerminalApp"));
 const FilesApp = lazy(() => import("../apps/files/FilesApp"));
 const EditorApp = lazy(() => import("../apps/editor/EditorApp"));
 const EmberApp = lazy(() => import("../ember/EmberPanel"));
+const SystemApp = lazy(() => import("../apps/system/SystemApp"));
+const LogsApp = lazy(() => import("../apps/logs/LogsApp"));
 
 export const APPS: Record<string, AppDef> = {
   assistant: {
@@ -97,7 +99,7 @@ export const APPS: Record<string, AppDef> = {
     keywords: ["journal", "journalctl", "systemd", "log"],
     pairable: true,
     multiInstance: true,
-    phase: 8,
+    component: LogsApp,
   },
   system: {
     id: "system",
@@ -107,7 +109,7 @@ export const APPS: Record<string, AppDef> = {
     keywords: ["dashboard", "cpu", "gpu", "memory", "processes", "services", "packages", "monitor"],
     pairable: false,
     multiInstance: false,
-    phase: 8,
+    component: SystemApp,
   },
   settings: {
     id: "settings",

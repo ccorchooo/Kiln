@@ -3,8 +3,9 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 7 of 10.** Ember has a voice: talk to it with the mic or `Ctrl+Alt+Space`, hear replies
-> spoken by AXION's TTS, with captions under the orb. Phase 6 brought chat with tools, approvals, image generation
+> **Status: Phase 8 of 10.** The System app (live overview, processes, services, packages, network, storage,
+> power) and a live Logs app are in. Phase 7 gave Ember a voice: talk to it with the mic or `Ctrl+Alt+Space`,
+> hear replies spoken by AXION's TTS, with captions under the orb. Phase 6 brought chat with tools, approvals, image generation
 > and a model picker, in a sidebar the orb opens. Files, previews and the editor arrived in Phase 5, the terminal
 > in Phase 4, widgets in Phase 3. Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
 > (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
@@ -155,6 +156,27 @@ faster-whisper for speech-to-text. Kiln never calls a cloud API unless you confi
   button in the header reads every reply aloud, and stops speech that is playing. Captions under the orb show
   what Ember heard and the sentence it is saying. The mic and speech stop when Kiln locks.
 
+## System and Logs
+
+- **Overview:** CPU (per core), memory and swap, GPU, network, disks, temperatures, uptime and pending
+  updates, live from the same stream the widgets use.
+- **Processes:** every process, sorted by CPU, memory or name, searchable by name, command or PID.
+  **Stop** sends SIGTERM and **Force stop** SIGKILL, for your own processes only; each asks once in place.
+- **Services:** system and user units (running, failed or all), with start, stop, restart, enable and
+  disable, and a **Logs** button that opens the Logs app on that unit. Kiln refuses to stop its own service.
+- **Packages:** pending updates (repositories and the AUR), the packages you installed, and search.
+  Installing, removing and updating open a Terminal and run `pacman` or your AUR helper there, so you see
+  every prompt before anything changes.
+- **Network:** interfaces with addresses, link speed and live throughput, plus your Tailscale devices.
+- **Storage:** filesystems (btrfs subvolumes grouped by device) and the physical drives.
+- **Power:** lock, suspend, restart and power off.
+- **Logs:** `journalctl -f`, live: system or your own journal, filtered by unit, level, time and a
+  case-insensitive regex. Pause holds the view while new lines queue; colors mark errors and warnings.
+
+Every action (stopping a process, changing a service, power) needs your Kiln password if you haven't
+confirmed it in the last few minutes, and is written to the audit log. Root actions first go through
+polkit; if that is refused, Kiln asks for your sudo password once, feeds it to `sudo -k -S`, and forgets it.
+
 ## Files and Editor
 
 Files is rooted at your home folder: the same jail Ember's file tools will use.
@@ -301,12 +323,16 @@ backend/app/
   routes_core.py   appearance, audit API, /ws/events
   ember/           llm (AXION client), risk (command classifier), tools, comfy (ComfyUI), service (chat loop, approvals)
   routes_ember.py  /api/ember/* (NDJSON chat stream, conversations, approvals, models)
+  system/admin.py  processes, services, packages, network, storage, power, journal filters
+  routes_system.py /api/system/* (System app), /ws/logs (live journal)
 frontend/src/
   app/             App, LockScreen, PasswordPill
   shell/           window manager store, Strip (Home + workspaces + task view), Window,
                    WorkspacePage (tiling/floating), Taskbar (dock, island, tray), Spotlight, app registry
   ember/           Ember sidebar (chat, tool cards, approvals, image mode, model picker) and its store
   apps/            Settings (appearance, dock, taskbar widgets, devices, security); placeholders
+  apps/system/     System app (overview, processes, services, packages, network, storage, power)
+  apps/logs/       Logs app (live journal with filters)
   apps/files/      file manager (views, panels, uploads, watcher)
   apps/editor/     Monaco editor app + workers/themes
   previews/        lazy viewers per file kind
@@ -327,6 +353,6 @@ frontend/src/
 5. ✅ File manager, previews (image, video, audio, PDF, markdown, code, 3D, archives), Monaco editor
 6. ✅ Ember (text): sidebar, tools, risk classifier, approvals, ComfyUI images, model picker
 7. ✅ Voice: STT/TTS, full orb states, captions
-8. System apps (dashboard, processes, services, packages, logs, network, storage, power)
+8. ✅ System apps (dashboard, processes, services, packages, logs, network, storage, power)
 9. Polish: six themes × light/dark, theme editor, motion, mobile, PWA
 10. Extras: automations, clipboard, screenshots, media, notes

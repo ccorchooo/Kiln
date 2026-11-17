@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { create } from "zustand";
 import { api } from "../lib/api";
 import { toastError } from "../lib/toasts";
@@ -87,6 +88,28 @@ export const useMetrics = create<MetricsStore>((set) => ({
     }),
   setConnected: (connected) => set({ connected }),
 }));
+
+/** Topics apps ask for on top of the widgets' (e.g. the System dashboard), counted per requester. */
+export const useExtraTopics = create<{ counts: Record<string, number> }>(() => ({ counts: {} }));
+
+export function useMetricTopics(topics: string[]): void {
+  const key = topics.join(",");
+  useEffect(() => {
+    const list = key.split(",").filter(Boolean);
+    const bump = (d: number) =>
+      useExtraTopics.setState((s) => {
+        const counts = { ...s.counts };
+        for (const t of list) counts[t] = (counts[t] ?? 0) + d;
+        return { counts };
+      });
+    bump(1);
+    return () => bump(-1);
+  }, [key]);
+}
+
+export function extraTopics(counts: Record<string, number>): string[] {
+  return Object.keys(counts).filter((t) => (counts[t] ?? 0) > 0);
+}
 
 export function widgetTopics(widgets: WidgetConfig[]): string[] {
   return [...new Set(widgets.map((w) => topicOf(w.type)).filter((t): t is string => !!t))];
