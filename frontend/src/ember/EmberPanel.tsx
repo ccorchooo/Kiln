@@ -1,5 +1,5 @@
 /**
- * Ember's sidebar: chat with tool cards and approvals, image mode (ComfyUI), model picker, history.
+ * Ember's sidebar: chat with tool cards and approvals, image mode (ComfyUI), voice, model picker, history.
  * Opened by the orb on Home, the dock, Spotlight hand-offs and the Ember widget.
  */
 import { AnimatePresence, motion } from "framer-motion";
@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
   LoaderCircle,
   MessageCircle,
+  Mic,
   Package,
   ScrollText,
   Search,
@@ -26,6 +27,8 @@ import {
   SquarePen,
   SquareTerminal,
   Trash2,
+  Volume2,
+  VolumeX,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -49,6 +52,7 @@ import { useAuth } from "../lib/store";
 import "../previews/prose.css";
 import { imageUrl, type Approval, type Call, type ImageSize, type Msg, type Risk } from "./api";
 import { useEmber } from "./store";
+import { setSpeakReplies, stopSpeaking, toggleListening, useVoice } from "./voice";
 
 const TOOL_ICON: Record<string, LucideIcon> = {
   run_command: SquareTerminal,
@@ -167,6 +171,8 @@ function Header() {
   const name = useAuth((s) => s.assistantName);
   const view = useEmber((s) => s.view);
   const streaming = useEmber((s) => s.streaming);
+  const speaking = useVoice((s) => s.phase === "speaking");
+  const speakReplies = useVoice((s) => s.speakReplies);
   const { setView, newChat, setOpen } = useEmber.getState();
   return (
     <header className="flex shrink-0 items-center gap-1 border-b border-hairline px-3 py-2.5">
@@ -174,6 +180,19 @@ function Header() {
       <h2 className="heading-display mr-1 ml-1.5 text-xl text-ink">{name}</h2>
       <ModelPicker />
       <div className="ml-auto flex items-center">
+        <IconButton
+          label={
+            speaking ? "Stop speaking" : speakReplies ? "Stop reading replies aloud" : "Read replies aloud"
+          }
+          active={speakReplies}
+          onClick={() => (speaking ? stopSpeaking() : setSpeakReplies(!speakReplies))}
+        >
+          {speakReplies || speaking ? (
+            <Volume2 className="size-[18px]" strokeWidth={1.5} />
+          ) : (
+            <VolumeX className="size-[18px]" strokeWidth={1.5} />
+          )}
+        </IconButton>
         <IconButton
           label={view === "history" ? "Back to chat" : "Chats"}
           active={view === "history"}
@@ -672,6 +691,7 @@ function Composer() {
   const size = useEmber((s) => s.imageSize);
   const prefill = useEmber((s) => s.prefill);
   const open = useEmber((s) => s.open);
+  const voice = useVoice((s) => s.phase);
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const { send, stop, setMode, setImageSize } = useEmber.getState();
@@ -759,12 +779,37 @@ function Composer() {
               ))}
             </select>
           )}
+          <span className="flex-1" />
+          {mode === "chat" && (
+            <button
+              type="button"
+              onClick={() => void toggleListening()}
+              disabled={voice === "transcribing"}
+              aria-pressed={voice === "listening"}
+              aria-label={voice === "listening" ? "Stop listening" : `Speak to ${name}`}
+              title={voice === "listening" ? "Stop listening" : `Speak to ${name} (Ctrl+Alt+Space)`}
+              className={`grid size-8 place-items-center rounded-full transition disabled:opacity-40 ${
+                voice === "listening"
+                  ? "bg-accent-soft text-accent-ink"
+                  : "text-ink-2 hover:bg-[var(--hairline)]"
+              }`}
+            >
+              {voice === "transcribing" ? (
+                <LoaderCircle className="size-4 animate-spin" />
+              ) : (
+                <Mic
+                  className={`size-4 ${voice === "listening" ? "animate-pulse" : ""}`}
+                  strokeWidth={1.75}
+                />
+              )}
+            </button>
+          )}
           {streaming ? (
             <button
               type="button"
               onClick={() => void stop()}
               aria-label="Stop"
-              className="ml-auto grid size-8 place-items-center rounded-full bg-[var(--hairline-strong)] text-ink"
+              className="grid size-8 place-items-center rounded-full bg-[var(--hairline-strong)] text-ink"
             >
               <Square className="size-3.5 fill-current" />
             </button>
@@ -774,7 +819,7 @@ function Composer() {
               onClick={submit}
               disabled={!text.trim()}
               aria-label={mode === "image" ? "Generate" : "Send"}
-              className="hover-lift ml-auto grid size-8 place-items-center rounded-full bg-accent-fill text-on-accent disabled:opacity-40"
+              className="hover-lift grid size-8 place-items-center rounded-full bg-accent-fill text-on-accent disabled:opacity-40"
             >
               <ArrowUp className="size-4" strokeWidth={2} />
             </button>

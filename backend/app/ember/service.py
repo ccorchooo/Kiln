@@ -23,6 +23,7 @@ from app.ember import tools
 from app.ember.comfy import SIZES, ComfyClient, ImageError
 from app.ember.llm import LLMClient, LLMError, ToolCall
 from app.ember.risk import Risk
+from app.ember.voice import Voice
 from app.fs import ops
 
 if TYPE_CHECKING:
@@ -111,6 +112,7 @@ class EmberService:
         self.state = state
         self.llm = LLMClient(state.config.llm)
         self.comfy = ComfyClient(state.config.image)
+        self.voice = Voice(state.config.voice)
         self.runs: dict[str, Run] = {}
         self.approvals: dict[str, Approval] = {}
         self.procs: set[asyncio.subprocess.Process] = set()

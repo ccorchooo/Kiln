@@ -63,10 +63,10 @@ shift = 3.0
 timeout_seconds = 300
 
 [voice]
-stt_model = "small"             # faster-whisper model
+stt_model = "small"             # faster-whisper model, run on the CPU (tiny | base | small | medium | large-v3)
 tts_base_url = "http://127.0.0.1:8891/v1" # AXION TTS (OpenAI-compatible /v1/audio/speech)
-tts_voice = ""
-wake_word = false
+tts_voice = ""                  # any name from `local-ai voices`; empty = AXION's default
+wake_word = false               # not implemented yet
 
 [files]
 jail_root = "~"

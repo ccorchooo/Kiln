@@ -257,3 +257,43 @@ async def test_bad_cwd_fails_before_approval(client: httpx.AsyncClient, state: A
     assert not any(e["type"] == "approval" for e in events)
     result = next(e for e in events if e["type"] == "tool_result")
     assert result["status"] == "error" and "cwd" in result["output"]
+
+
+class _Seg:
+    text = " hola Ember "
+
+
+class _Info:
+    language = "es"
+
+
+class FakeWhisper:
+    def __init__(self) -> None:
+        self.got: bytes = b""
+
+    def transcribe(self, audio: Any, vad_filter: bool) -> tuple[list[_Seg], _Info]:
+        self.got = audio.read()
+        return [_Seg(), _Seg()], _Info()
+
+
+async def test_voice_transcribe_and_speak(client: httpx.AsyncClient, state: AppState) -> None:
+    csrf = await login(client, state)
+    h = {"x-csrf-token": csrf}
+    fake = FakeWhisper()
+    state.ember.voice._model = fake
+    r = await client.post("/api/ember/voice/transcribe", content=b"OggS-audio", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"text": "hola Ember hola Ember", "language": "es"}
+    assert fake.got == b"OggS-audio"
+    assert (await client.post("/api/ember/voice/transcribe", content=b"", headers=h)).status_code == 400
+    # Nothing listens on the TTS port in tests: a clear 503, not a crash.
+    state.config.voice.tts_base_url = "http://127.0.0.1:9/v1"
+    r = await client.post("/api/ember/voice/speak", json={"text": "hola"}, headers=h)
+    assert r.status_code == 503 and r.json()["detail"]["code"] == "tts_unavailable"
+    status = (await client.get("/api/ember/voice/status")).json()
+    assert status == {"stt": True, "tts": False}
+
+
+async def test_voice_requires_session(client: httpx.AsyncClient, state: AppState) -> None:
+    r = await client.post("/api/ember/voice/transcribe", content=b"x")
+    assert r.status_code in {401, 403}

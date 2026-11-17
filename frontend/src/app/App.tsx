@@ -9,6 +9,7 @@ import { toastError } from "../lib/toasts";
 import { useIdleLock } from "../lib/useIdleLock";
 import { useAppearance, type Appearance } from "../theme/useAppearance";
 import { MetricsSocket, useWidgets, widgetTopics } from "../widgets/store";
+import { toggleListening } from "../ember/voice";
 import { LockScreen } from "./LockScreen";
 import { Shell } from "../shell/Shell";
 
@@ -91,6 +92,10 @@ export function App() {
         e.preventDefault();
         e.stopPropagation();
         void lockNow();
+      } else if (!e.shiftKey && e.code === "Space" && useAuth.getState().status === "unlocked") {
+        e.preventDefault();
+        e.stopPropagation();
+        void toggleListening();
       }
     };
     // Capture phase: global shortcuts must win over focused apps (xterm stops propagation).

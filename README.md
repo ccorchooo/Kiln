@@ -3,7 +3,8 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 6 of 10.** Ember, the assistant, is in: chat with tools, approvals, image generation
+> **Status: Phase 7 of 10.** Ember has a voice: talk to it with the mic or `Ctrl+Alt+Space`, hear replies
+> spoken by AXION's TTS, with captions under the orb. Phase 6 brought chat with tools, approvals, image generation
 > and a model picker, in a sidebar the orb opens. Files, previews and the editor arrived in Phase 5, the terminal
 > in Phase 4, widgets in Phase 3. Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
 > (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
@@ -17,6 +18,7 @@ Tailscale network. Ember, the local assistant, lives in the orb.
 | Search apps, windows, settings and actions | `Ctrl+Space` or the magnifier in the center island. `Tab` hands the query to Ember. |
 | Task view (all workspaces) | `Ctrl+Alt+Tab` or the grid button. Drag windows between workspaces; drag the numbers to reorder. |
 | Previous/next workspace | `Ctrl+Alt+←/→`, a horizontal trackpad swipe, or a touch swipe on a title bar or Home |
+| Speak to Ember | The mic in Ember's composer, or `Ctrl+Alt+Space` anywhere. It stops by itself when you pause; press again to stop early. |
 | Lock / panic | `Ctrl+Alt+L` / `Ctrl+Alt+Shift+K` |
 | Open an app on its own workspace | `Shift`-click or middle-click it in the dock |
 | Float or tile a workspace | The window button, or double-click a title bar. Drag a floating window to the screen edge to re-tile it. |
@@ -106,8 +108,8 @@ sudo firewall-cmd --reload     # and make sure 8443 is NOT open in your default 
 ## Ember
 
 Ember talks to any OpenAI-compatible endpoint configured in `[llm]`. The default is the **AXION** router
-that `local-ai run` starts at `http://127.0.0.1:11435/v1`. Voice (Phase 7) will use AXION's TTS at `:8891`
-and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you configure one.
+that `local-ai run` starts at `http://127.0.0.1:11435/v1`. Voice uses AXION's TTS at `:8891` and a local
+faster-whisper for speech-to-text. Kiln never calls a cloud API unless you configure one.
 
 - **Sidebar:** the orb on Home opens Ember on the right (a full-screen sheet on phones). Chats are kept on
   the server; the clock button lists them, the pen starts a new one. Spotlight, Files and the terminal's
@@ -126,7 +128,12 @@ and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unle
   ComfyUI and Z-Image Turbo (`[image]`). Kiln frees the language model's VRAM first, since the RTX 3080 is
   shared, and gives it back before the next reply. Results land in `~/Pictures/Kiln` and open in Files.
 - **Stopping:** the stop button, closing the tab, or panic cancels the run and kills any command it started.
-  The orb shows what Ember is doing: thinking, waiting for your OK (ochre), or an error.
+  The orb shows what Ember is doing: listening, thinking, speaking, waiting for your OK (ochre), or an error.
+- **Voice:** the mic records until you pause, then faster-whisper transcribes it on the CPU (`[voice] stt_model`,
+  English and Spanish detected automatically; the first use downloads the model from Hugging Face) and sends
+  it. Replies to voice messages are spoken by AXION's TTS (`tts_voice`, empty = its default); the speaker
+  button in the header reads every reply aloud, and stops speech that is playing. Captions under the orb show
+  what Ember heard and the sentence it is saying. The mic and speech stop when Kiln locks.
 
 ## Files and Editor
 
@@ -299,7 +306,7 @@ frontend/src/
 4. ✅ Terminal: real PTY over WebSocket, tabs, split panes, persistence, snippets, mobile key row
 5. ✅ File manager, previews (image, video, audio, PDF, markdown, code, 3D, archives), Monaco editor
 6. ✅ Ember (text): sidebar, tools, risk classifier, approvals, ComfyUI images, model picker
-7. Voice: STT/TTS, full orb states, captions
+7. ✅ Voice: STT/TTS, full orb states, captions
 8. System apps (dashboard, processes, services, packages, logs, network, storage, power)
 9. Polish: six themes × light/dark, theme editor, motion, mobile, PWA
 10. Extras: automations, clipboard, screenshots, media, notes

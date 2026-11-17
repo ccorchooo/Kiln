@@ -1,10 +1,9 @@
 /**
  * Ember's client state: the sidebar, the open conversation, live tool calls and approvals,
- * the model list. Drives the orb's mood (thinking / awaiting approval / error).
+ * the model list. The orb's mood is derived in ./voice.ts.
  */
 import { create } from "zustand";
 import { api, ApiError } from "../lib/api";
-import { useUI } from "../lib/store";
 import { toastError } from "../lib/toasts";
 import {
   streamChat,
@@ -98,8 +97,6 @@ function callsFrom(messages: Msg[]): Record<string, Call> {
   }
   return calls;
 }
-
-let errorTimer: number | null = null;
 
 export const useEmber = create<Ember>()((set, get) => {
   const patchCall = (id: string, patch: Partial<Call>) =>
@@ -383,24 +380,4 @@ export const useEmber = create<Ember>()((set, get) => {
       return p;
     },
   };
-});
-
-// The orb reflects what Ember is doing.
-useEmber.subscribe((s, prev) => {
-  if (s.error && s.error !== prev.error) {
-    if (errorTimer !== null) window.clearTimeout(errorTimer);
-    errorTimer = window.setTimeout(() => {
-      errorTimer = null;
-      const ui = useUI.getState();
-      if (ui.orbMood === "error") ui.set({ orbMood: "idle" });
-    }, 4000);
-  }
-  const mood = s.approvals.length
-    ? "approval"
-    : s.streaming
-      ? "thinking"
-      : s.error && errorTimer !== null
-        ? "error"
-        : "idle";
-  if (useUI.getState().orbMood !== mood) useUI.getState().set({ orbMood: mood });
 });

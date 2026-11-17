@@ -8,6 +8,7 @@ import { useCallback, useRef, useState, type PointerEvent as RPointerEvent } fro
 import { spring, springSoft } from "../components/motion";
 import { PANEL_WIDTH } from "../ember/EmberPanel";
 import { useEmber } from "../ember/store";
+import { useVoice } from "../ember/voice";
 import { useAuth } from "../lib/store";
 import { useToasts } from "../lib/toasts";
 import { OrbAnchor } from "../three/OrbAnchor";
@@ -32,17 +33,49 @@ function HomePage({ showOrb, mobile }: { showOrb: boolean; mobile: boolean }) {
       style={{ paddingRight: shift }}
       inert={taskView}
     >
-      {showOrb && !(panelOpen && mobile) ? (
-        <OrbAnchor
-          untransformed
-          refreshKey={shift}
-          className="aspect-square w-[min(44vh,62vw)]"
-          label={panelOpen ? `Close ${assistant}` : `Open ${assistant}`}
-          onActivate={() => useEmber.getState().toggle()}
-        />
-      ) : (
-        <div className="aspect-square w-[min(44vh,62vw)]" aria-hidden />
-      )}
+      <div className="relative">
+        {showOrb && !(panelOpen && mobile) ? (
+          <OrbAnchor
+            untransformed
+            refreshKey={shift}
+            className="aspect-square w-[min(44vh,62vw)]"
+            label={panelOpen ? `Close ${assistant}` : `Open ${assistant}`}
+            onActivate={() => useEmber.getState().toggle()}
+          />
+        ) : (
+          <div className="aspect-square w-[min(44vh,62vw)]" aria-hidden />
+        )}
+        <Captions />
+      </div>
+    </div>
+  );
+}
+
+/** What Ember is hearing or saying, under the orb. */
+function Captions() {
+  const caption = useVoice((s) => s.caption);
+  const speaking = useVoice((s) => s.phase === "speaking");
+  return (
+    <div
+      aria-live="polite"
+      className="absolute top-full left-1/2 mt-6 flex w-[min(560px,88vw)] -translate-x-1/2 justify-center"
+    >
+      <AnimatePresence mode="wait">
+        {caption && (
+          <motion.p
+            key={caption}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.25 }}
+            className={`glass rounded-[16px] px-4 py-2 text-center text-[15px] text-pretty ${
+              speaking ? "text-ink" : "text-ink-2 italic"
+            }`}
+          >
+            {caption}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

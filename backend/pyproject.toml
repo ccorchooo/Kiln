@@ -13,6 +13,8 @@ dependencies = [
   "qrcode>=8.0",
   "watchfiles>=1.0",
   "httpx>=0.27",
+  "faster-whisper>=1.1",  # Ember voice input (runs on the CPU)
+  "av<18",  # shortcut: faster-whisper 1.2.1 passes metadata_errors, which PyAV 18 removed; lift once it is fixed
 ]
 
 [project.optional-dependencies]

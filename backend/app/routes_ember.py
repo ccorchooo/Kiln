@@ -1,16 +1,17 @@
-"""Ember API: chat (NDJSON stream), conversations, approvals, model choice, image status."""
+"""Ember API: chat (NDJSON stream), conversations, approvals, model choice, image status, voice."""
 
 from __future__ import annotations
 
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.auth.deps import SessionDep, StateDep, client_ip
 from app.ember.comfy import SIZES
 from app.ember.service import ApprovalError, EmberBusy
+from app.ember.voice import VoiceError
 
 router = APIRouter()
 
@@ -112,6 +113,47 @@ async def ember_decide(aid: str, body: DecisionIn, sess: SessionDep, state: Stat
     finally:
         body.sudo_password = None
     return {"ok": True}
+
+
+MAX_AUDIO_BYTES = 8 * 1024 * 1024  # ~10 minutes of browser opus; a voice message is far smaller
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+def _voice_error(exc: VoiceError) -> HTTPException:
+    return HTTPException(exc.status, detail={"code": exc.code, "message": exc.message})
+
+
+@router.get("/api/ember/voice/status")
+async def ember_voice_status(sess: SessionDep, state: StateDep) -> dict[str, Any]:
+    voice = state.ember.voice
+    return {"stt": voice.stt_installed(), "tts": await voice.tts_available()}
+
+
+@router.post("/api/ember/voice/transcribe")
+async def ember_transcribe(request: Request, sess: SessionDep, state: StateDep) -> dict[str, Any]:
+    buf = bytearray()
+    async for part in request.stream():
+        buf += part
+        if len(buf) > MAX_AUDIO_BYTES:
+            raise HTTPException(413, detail={"code": "too_large", "message": "That recording is too long"})
+    if not buf:
+        raise HTTPException(400, detail={"code": "empty", "message": "No audio"})
+    try:
+        return await state.ember.voice.transcribe(bytes(buf))
+    except VoiceError as exc:
+        raise _voice_error(exc) from exc
+
+
+@router.post("/api/ember/voice/speak")
+async def ember_speak(body: SpeakIn, sess: SessionDep, state: StateDep) -> Response:
+    try:
+        audio, media_type = await state.ember.voice.speak(body.text)
+    except VoiceError as exc:
+        raise _voice_error(exc) from exc
+    return Response(audio, media_type=media_type, headers={"cache-control": "no-store"})
 
 
 @router.get("/api/ember/image/status")
