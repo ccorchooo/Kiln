@@ -32,7 +32,22 @@ Layout is remembered per device.
 ```bash
 ./install.sh            # install or upgrade (runs as you; asks before any sudo)
 ./install.sh --rebuild  # force a frontend rebuild
+./install.sh --preview  # try it without installing (see below)
+./install.sh --uninstall  # remove Kiln, keep your data and settings
+./install.sh --purge    # remove Kiln and delete your data, settings and certificates
 ```
+
+**Preview** runs Kiln from one temporary folder with a random port, a throwaway certificate and a generated
+password (printed in the terminal), reachable only from this machine at `https://127.0.0.1:<port>`, so it needs
+no setup, firewall or service. Files only sees an empty sandbox folder; Terminal and Ember commands still run
+as you. Ctrl+C or closing the terminal stops it and deletes the folder. It reuses an installed or repo Python
+environment when one exists (otherwise it builds one inside the temp folder).
+
+**Uninstall** stops and removes the systemd user service, deletes the app (venv and web build) and undoes the
+firewall rules and Tailscale operator rights the installer added, asking before each `sudo` step. `--purge`
+also deletes `~/.local/share/kiln` (password, chats, audit log), `~/.config/kiln` (settings, certificates) and,
+if you agree, the speech model Kiln downloaded. Your images in `~/Pictures/Kiln`, your Trash and this
+repository are never touched.
 
 The installer does the following:
 
