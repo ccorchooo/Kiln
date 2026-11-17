@@ -24,6 +24,7 @@ export function LockScreen() {
       <OrbAnchor
         className="absolute top-[34%] left-1/2 aspect-square w-[min(56vw,34vh)] -translate-x-1/2 -translate-y-1/2 md:top-1/2 md:left-[clamp(40px,10vw,180px)] md:w-[min(40vh,32vw)] md:translate-x-0 md:-translate-y-[55%]"
         label="Ember"
+        priority={1}
       />
       <div className="absolute inset-x-4 bottom-[max(16px,env(safe-area-inset-bottom))] flex flex-col items-stretch gap-3 md:inset-x-auto md:bottom-6 md:left-6 md:flex-row md:items-center">
         <PasswordPill />

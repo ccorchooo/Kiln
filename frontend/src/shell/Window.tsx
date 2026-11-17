@@ -87,8 +87,10 @@ export function Window({
     const d = drag.current;
     drag.current = null;
     if (!d || !live) return setLive(null);
-    if (d.mode === "move" && (e.clientX <= SNAP_PX || e.clientX >= window.innerWidth - SNAP_PX)) {
-      wm().snapToTile(ws.id, win.id, e.clientX <= SNAP_PX ? "start" : "end");
+    const page = (e.currentTarget as HTMLElement).closest("[data-page]")!.getBoundingClientRect();
+    const atStart = e.clientX <= page.left + SNAP_PX;
+    if (d.mode === "move" && (atStart || e.clientX >= page.right - SNAP_PX)) {
+      wm().snapToTile(ws.id, win.id, atStart ? "start" : "end");
     } else {
       wm().setFloat(ws.id, win.id, toFloatRect(area, live));
     }

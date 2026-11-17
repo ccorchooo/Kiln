@@ -24,7 +24,7 @@ export interface AppDef {
   keywords: string[];
   pairable: boolean;
   multiInstance: boolean;
-  /** Opens Ember's sidebar instead of a window. */
+  /** Opens in Ember's sidebar by default; `openApp(id, { window: true })` makes it a window. */
   sidebar?: boolean;
   /** Phase in which the real app lands; placeholder until then. */
   phase?: number;
@@ -35,6 +35,7 @@ const SettingsApp = lazy(() => import("../apps/settings/SettingsApp"));
 const TerminalApp = lazy(() => import("../apps/terminal/TerminalApp"));
 const FilesApp = lazy(() => import("../apps/files/FilesApp"));
 const EditorApp = lazy(() => import("../apps/editor/EditorApp"));
+const EmberApp = lazy(() => import("../ember/EmberPanel"));
 
 export const APPS: Record<string, AppDef> = {
   assistant: {
@@ -46,6 +47,7 @@ export const APPS: Record<string, AppDef> = {
     pairable: false,
     multiInstance: false,
     sidebar: true,
+    component: EmberApp,
   },
   terminal: {
     id: "terminal",

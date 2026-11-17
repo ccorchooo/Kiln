@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.auth.deps import SessionDep, StateDep, client_ip
 from app.ember.comfy import SIZES
@@ -21,10 +23,29 @@ class ImageOpts(BaseModel):
     negative: str = Field(default="", max_length=2000)
 
 
+SCREEN_PREFIXES = ("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")
+
+
 class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=32000)
     conversation_id: str | None = Field(default=None, max_length=64)
     image: ImageOpts | None = None
+    # A screenshot for a vision model, as a data URL (~4 MB of base64 at most).
+    screen: str | None = Field(default=None, max_length=4_000_000)
+
+    @field_validator("screen")
+    @classmethod
+    def _screen_is_image(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        prefix = next((p for p in SCREEN_PREFIXES if v.startswith(p)), None)
+        if prefix is None:
+            raise ValueError("screen must be a JPEG, PNG or WebP data URL")
+        try:
+            base64.b64decode(v[len(prefix) :], validate=True)
+        except binascii.Error as exc:
+            raise ValueError("screen is not valid base64") from exc
+        return v
 
 
 class ModelIn(BaseModel):
@@ -87,7 +108,10 @@ async def ember_chat(body: ChatIn, request: Request, sess: SessionDep, state: St
             body.text,
             body.image.model_dump() if body.image else None,
             client_ip(request),
+            body.screen,
         )
+    except ValueError as exc:
+        raise HTTPException(400, detail={"code": "no_vision", "message": str(exc)}) from exc
     except EmberBusy as exc:
         raise HTTPException(409, detail={"code": "busy", "message": str(exc)}) from exc
     except KeyError as exc:

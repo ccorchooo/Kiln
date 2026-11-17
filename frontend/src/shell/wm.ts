@@ -44,7 +44,8 @@ interface WMState {
 }
 
 interface WMActions {
-  openApp: (appId: string, opts?: { newWorkspace?: boolean }) => void;
+  /** `window`: open a sidebar app (Ember) as a normal window instead. */
+  openApp: (appId: string, opts?: { newWorkspace?: boolean; window?: boolean }) => void;
   closeWindow: (winId: string) => void;
   focusWindow: (winId: string) => void;
   goTo: (index: number) => void;
@@ -117,8 +118,8 @@ export const useWM = create<WM>()(
       openApp: (appId, opts = {}) => {
         const app = APPS[appId];
         if (!app) return;
-        if (app.sidebar) {
-          useEmber.getState().setOpen(true);
+        if (app.sidebar && !opts.window) {
+          useEmber.getState().setOpen(true); // focuses Ember's window instead when one is open
           set({ taskView: false, spotlight: false });
           return;
         }
@@ -339,7 +340,7 @@ export const useWM = create<WM>()(
         const p = (persisted ?? {}) as Partial<WMState>;
         const windows: Record<string, Win> = {};
         for (const [id, w] of Object.entries(p.windows ?? {}))
-          if (w && APPS[w.appId] && !APPS[w.appId]!.sidebar) windows[id] = { id, appId: w.appId };
+          if (w && APPS[w.appId]) windows[id] = { id, appId: w.appId };
         const workspaces = (p.workspaces ?? [])
           .map((w) => ({
             ...newWorkspace(),

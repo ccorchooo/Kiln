@@ -1,79 +1,51 @@
 /**
- * Marks where the single shared orb should be. The WebGL orb springs to the active anchor;
- * with quality "off" a CSS blob is rendered here instead and glides via layoutId.
- *
- * `untransformed`: measure the layout position (offsetLeft/Top chain) instead of the painted
- * rect, for anchors inside containers that are mid-animation (e.g. the workspace strip).
+ * Marks where the single shared orb should be. The WebGL scene reads the active anchor's rect
+ * every frame (so the orb follows anchors that slide, scale or reflow) and springs toward it.
+ * The active anchor is the one with the highest `priority`, then the most recently mounted:
+ * the lock screen outranks a desktop that is still fading out behind it.
+ * With quality "off" a CSS blob is rendered here instead and glides via layoutId.
  */
 import { motion } from "framer-motion";
-import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { useUI } from "../lib/store";
 
 interface Props {
   className?: string;
   label?: string;
   onActivate?: () => void;
-  untransformed?: boolean;
-  /** Re-measure when this changes (e.g. the anchor moved without resizing). */
-  refreshKey?: unknown;
+  priority?: number;
   children?: ReactNode;
 }
 
-function layoutRect(el: HTMLElement): { x: number; y: number; w: number; h: number } {
-  let x = 0;
-  let y = 0;
-  let node: HTMLElement | null = el;
-  while (node) {
-    x += node.offsetLeft;
-    y += node.offsetTop;
-    if (node.dataset.orbOrigin !== undefined) break;
-    node = node.offsetParent as HTMLElement | null;
-  }
-  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+interface Entry {
+  el: HTMLElement;
+  priority: number;
+  seq: number;
 }
 
-export function OrbAnchor({
-  className = "",
-  label,
-  onActivate,
-  untransformed = false,
-  refreshKey,
-  children,
-}: Props) {
+const anchors = new Set<Entry>();
+let seq = 0;
+
+/** The orb's target in CSS px (center + diameter), or null when no anchor is showing. */
+export function readOrbAnchor(): { cx: number; cy: number; size: number } | null {
+  let best: Entry | null = null;
+  for (const a of anchors)
+    if (!best || a.priority > best.priority || (a.priority === best.priority && a.seq > best.seq)) best = a;
+  if (!best) return null;
+  const r = best.el.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, size: Math.min(r.width, r.height) };
+}
+
+export function OrbAnchor({ className = "", label, onActivate, priority = 0, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const owner = useId();
   const quality = useUI((s) => s.quality);
 
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const publish = () => {
-      const r = untransformed
-        ? layoutRect(el)
-        : (() => {
-            const b = el.getBoundingClientRect();
-            return { x: b.left, y: b.top, w: b.width, h: b.height };
-          })();
-      useUI.getState().set({
-        orbAnchor: { owner, cx: r.x + r.w / 2, cy: r.y + r.h / 2, size: Math.min(r.w, r.h) },
-      });
-    };
-    publish();
-    const ro = new ResizeObserver(publish);
-    ro.observe(el);
-    window.addEventListener("resize", publish);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", publish);
-    };
-  }, [owner, untransformed, refreshKey]);
-
-  useEffect(
-    () => () => {
-      if (useUI.getState().orbAnchor?.owner === owner) useUI.getState().set({ orbAnchor: null });
-    },
-    [owner],
-  );
+    const entry = { el: ref.current!, priority, seq: ++seq };
+    anchors.add(entry);
+    return () => void anchors.delete(entry);
+  }, [priority]);
 
   const Tag = onActivate ? "button" : "div";
   return (

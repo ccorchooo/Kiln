@@ -10,85 +10,86 @@ void main() {
 `;
 
 /**
- * Mesh-gradient wallpaper: five warm color fields drifting on looping paths (one cycle per
- * minute), domain-warped by low-frequency noise. Rendered at reduced resolution.
+ * Wallpaper, drawn at full resolution in one pass: a silky gradient that flows slowly between
+ * the theme's wallpaper colors (blended in OKLab, so mid-tones stay clean instead of muddy),
+ * the orb's halo and contact shadow, then a 1-LSB dither (no banding on dark palettes) and a
+ * static film grain.
  */
 export const WALLPAPER_FRAG = /* glsl */ `
 precision highp float;
 varying vec2 vUv;
+uniform vec2 uRes;
 uniform float uTime;   // seconds (already scaled for reduced motion)
-uniform float uAspect;
 uniform float uDark;   // 0 = light palette, 1 = dark palette (animated crossfade)
-uniform vec3 uLight[5];
+uniform vec3 uLight[5];   // OKLab, ordered from the base color to the strongest accent
 uniform vec3 uDarkPal[5];
 uniform vec3 uTint;    // gentle time-of-day shift (multiplier around 1.0)
-${SIMPLEX3D}
-
-void main() {
-  vec2 p = vec2((vUv.x - 0.5) * uAspect, vUv.y - 0.5);
-  float t = uTime * 6.28318530718 / 60.0;
-  vec2 warp = 0.16 * vec2(snoise(vec3(p * 1.1, t * 0.35)), snoise(vec3(p * 1.1 + 5.2, t * 0.35)));
-  vec2 q = p + warp;
-
-  vec2 c[5];
-  float a = uAspect * 0.5;
-  c[0] = vec2(-0.30 * a, 0.10) + vec2(0.20 * sin(t), 0.12 * cos(t * 2.0));
-  c[1] = vec2(-0.55 * a, 0.32) + vec2(0.15 * cos(t), 0.10 * sin(t));
-  c[2] = vec2( 0.50 * a, -0.30) + vec2(0.18 * sin(t * 2.0 + 1.3), 0.12 * cos(t + 0.4));
-  c[3] = vec2( 0.62 * a, 0.36) + vec2(0.14 * cos(t + 2.1), 0.10 * sin(t * 2.0));
-  c[4] = vec2(-0.40 * a, -0.42) + vec2(0.16 * sin(t + 4.0), 0.08 * cos(t));
-  float r[5];
-  r[0] = 0.70; r[1] = 0.42; r[2] = 0.46; r[3] = 0.40; r[4] = 0.44;
-
-  vec3 col = vec3(0.0);
-  float wsum = 0.0;
-  for (int i = 0; i < 5; i++) {
-    vec2 d = q - c[i];
-    float w = exp(-dot(d, d) / (r[i] * r[i]));
-    vec3 ci = mix(uLight[i], uDarkPal[i], uDark);
-    col += ci * w;
-    wsum += w;
-  }
-  vec3 base = mix(uLight[0], uDarkPal[0], uDark);
-  col = mix(base, col / max(wsum, 1e-4), clamp(wsum * 1.4, 0.0, 1.0));
-  col *= uTint;
-  gl_FragColor = vec4(col, 1.0);
-}
-`;
-
-/** Upscale the low-res wallpaper, add the orb halo/contact shadow and full-res film grain. */
-export const COMPOSITE_FRAG = /* glsl */ `
-precision highp float;
-varying vec2 vUv;
-uniform sampler2D uTex;
-uniform vec2 uRes;
-uniform float uTime;
 uniform float uGrain;
 uniform vec2 uOrb;      // orb center in uv
 uniform float uOrbR;    // orb radius in uv-y units
 uniform float uGlow;    // 0..1, rises while speaking
 uniform float uOrbVisible;
 uniform vec3 uGlowColor;
-uniform float uDark;
+${SIMPLEX3D}
 
-float hash(vec2 p) {
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
+vec3 ramp(float x) {
+  x = clamp(x, 0.0, 1.0) * 4.0;
+  vec3 col = mix(uLight[0], uDarkPal[0], uDark);
+  for (int i = 0; i < 4; i++) {
+    vec3 next = mix(uLight[i + 1], uDarkPal[i + 1], uDark);
+    col = mix(col, next, smoothstep(float(i), float(i) + 1.0, x));
+  }
+  return col;
+}
+
+vec3 oklabToSrgb(vec3 c) {
+  float l = c.x + 0.3963377774 * c.y + 0.2158037573 * c.z;
+  float m = c.x - 0.1055613458 * c.y - 0.0638541728 * c.z;
+  float s = c.x - 0.0894841775 * c.y - 1.2914855480 * c.z;
+  l = l * l * l; m = m * m * m; s = s * s * s;
+  vec3 lin = vec3(
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s);
+  lin = clamp(lin, 0.0, 1.0);
+  return mix(lin * 12.92, 1.055 * pow(lin, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, lin));
+}
+
+// Stable per-pixel hash (no sin, no large multipliers: no patterns on mobile GPUs).
+float hash12(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
 void main() {
-  vec3 col = texture2D(uTex, vUv).rgb;
+  float aspect = uRes.x / uRes.y;
+  vec2 p = vec2((vUv.x - 0.5) * aspect, vUv.y - 0.5);
+  float t = uTime * 6.28318530718 / 90.0; // the sine drift loops every 90 s
+
+  // Silk: a soft sine warp feeding one slow noise octave.
+  vec2 w = 0.22 * vec2(sin(p.y * 2.3 + t), cos(p.x * 1.9 - t * 0.8));
+  float n = snoise(vec3(p * 0.85 + w, uTime * 0.012));
+  // Base color top-left, deepest accent pooling bottom-right.
+  float diag = 0.5 + 0.5 * (p.x / aspect - p.y);
+  vec3 lab = ramp(diag * 0.72 + n * 0.3 + 0.08);
+  vec2 q = vUv * 2.0 - 1.0;
+  lab.x *= 1.0 - 0.07 * uDark * dot(q, q); // quiet vignette, dark mode only (it greys cream)
+
+  vec3 col = oklabToSrgb(lab) * uTint;
+
   vec2 d = vUv - uOrb;
-  d.x *= uRes.x / uRes.y;
+  d.x *= aspect;
   float r = length(d) / max(uOrbR, 1e-4);
   float halo = exp(-r * r * 0.35) * uOrbVisible;
   col += uGlowColor * halo * (0.06 + 0.22 * uGlow) * mix(1.0, 0.7, uDark);
   vec2 sd = (d - vec2(0.0, -uOrbR * 1.05)) * vec2(1.0, 2.6);
   float shadow = exp(-dot(sd, sd) / (uOrbR * uOrbR * 0.35)) * uOrbVisible;
   col *= 1.0 - shadow * mix(0.10, 0.25, uDark);
-  float g = hash(floor(gl_FragCoord.xy) + floor(uTime * 12.0) * vec2(17.0, 31.0)) - 0.5;
-  col += g * uGrain;
+
+  vec2 px = floor(gl_FragCoord.xy);
+  col += (hash12(px) - hash12(px + 71.3)) / 255.0;   // triangular dither
+  col += (hash12(px * 1.618 + 9.1) - 0.5) * uGrain; // grain, static so it never shimmers
   gl_FragColor = vec4(col, 1.0);
 }
 `;

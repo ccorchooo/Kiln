@@ -297,3 +297,36 @@ async def test_voice_transcribe_and_speak(client: httpx.AsyncClient, state: AppS
 async def test_voice_requires_session(client: httpx.AsyncClient, state: AppState) -> None:
     r = await client.post("/api/ember/voice/transcribe", content=b"x")
     assert r.status_code in {401, 403}
+
+
+SCREEN = "data:image/jpeg;base64," + "QUJD" * 10
+
+
+async def test_screen_goes_to_vision_model(client: httpx.AsyncClient, state: AppState) -> None:
+    csrf = await login(client, state)
+    fake = FakeLLM([Turn(content="I see a terminal."), Turn(content="Still there.")])
+    state.ember.llm = fake  # type: ignore[assignment]
+    events = await _chat(client, csrf, {"text": "what's on my screen?", "screen": SCREEN})
+    assert events[0]["message"]["data"]["screen"] == SCREEN
+    user = fake.sent[0][-1]
+    assert user["role"] == "user"
+    assert user["content"][1] == {"type": "image_url", "image_url": {"url": SCREEN}}
+    # A model without vision gets a note instead of the picture, and new screenshots are refused.
+    cid = events[0]["conversation"]["id"]
+    real_models = fake.models
+
+    async def no_vision() -> list[dict[str, Any]]:
+        return [{**m, "vision": False} for m in await real_models()]
+
+    fake.models = no_vision  # type: ignore[method-assign]
+    await _chat(client, csrf, {"text": "and now?", "conversation_id": cid})
+    assert "can't see images" in fake.sent[1][1]["content"]
+    r = await client.post("/api/ember/chat", json={"text": "look", "screen": SCREEN}, headers={"x-csrf-token": csrf})
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "no_vision"
+
+
+async def test_screen_must_be_an_image_data_url(client: httpx.AsyncClient, state: AppState) -> None:
+    csrf = await login(client, state)
+    for bad in ["https://example.com/x.png", "data:text/html;base64,PGI+", "data:image/png;base64,not base64!"]:
+        r = await client.post("/api/ember/chat", json={"text": "x", "screen": bad}, headers={"x-csrf-token": csrf})
+        assert r.status_code == 422, bad

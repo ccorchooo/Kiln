@@ -26,6 +26,8 @@ export interface Msg {
     summary?: string;
     detail?: string;
     images?: string[];
+    /** Screenshot shown to a vision model (data URL). */
+    screen?: string;
     prompt?: string;
     size?: ImageSize;
     seed?: number;
@@ -117,6 +119,7 @@ export interface ChatBody {
   text: string;
   conversation_id: string | null;
   image?: { size: ImageSize };
+  screen?: string;
 }
 
 /** POST /api/ember/chat and call `onEvent` for each NDJSON line until the stream ends. */
@@ -175,3 +178,32 @@ export async function streamChat(body: ChatBody, onEvent: (e: StreamEvent) => vo
 }
 
 export const imageUrl = (path: string) => `/api/fs/raw?path=${encodeURIComponent(path)}`;
+
+/**
+ * One frame of what the user shares (this tab by default), as a JPEG data URL at most 1600 px
+ * on the long side. The browser asks for permission each time; nothing keeps recording.
+ */
+export async function captureScreen(): Promise<string> {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: false,
+    preferCurrentTab: true,
+    selfBrowserSurface: "include",
+  } as DisplayMediaStreamOptions);
+  try {
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play();
+    // Let the share prompt fade out of the captured tab before taking the frame.
+    await new Promise((r) => setTimeout(r, 400));
+    const scale = Math.min(1, 1600 / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    canvas.getContext("2d")!.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.82);
+  } finally {
+    stream.getTracks().forEach((t) => t.stop());
+  }
+}

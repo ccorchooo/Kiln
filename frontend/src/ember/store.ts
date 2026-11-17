@@ -5,7 +5,9 @@
 import { create } from "zustand";
 import { api, ApiError } from "../lib/api";
 import { toastError } from "../lib/toasts";
+import { useWM } from "../shell/wm";
 import {
+  captureScreen,
   streamChat,
   type Approval,
   type Call,
@@ -41,6 +43,8 @@ interface EmberState {
   imageSize: ImageSize;
   /** Text queued for the composer (e.g. from a hand-off while a reply is streaming). */
   prefill: string | null;
+  /** Screenshot attached to the next message. */
+  screen: string | null;
 }
 
 interface EmberActions {
@@ -60,6 +64,8 @@ interface EmberActions {
   setModel: (id: string) => Promise<void>;
   resolveApproval: (id: string) => void;
   takePrefill: () => string | null;
+  attachScreen: () => Promise<void>;
+  clearScreen: () => void;
 }
 
 export type Ember = EmberState & EmberActions;
@@ -209,8 +215,15 @@ export const useEmber = create<Ember>()((set, get) => {
     mode: "chat",
     imageSize: "square",
     prefill: null,
+    screen: null,
 
     setOpen: (open) => {
+      // While Ember is open as a window, "open Ember" means bring that window forward.
+      const win = open && Object.values(useWM.getState().windows).find((w) => w.appId === "assistant");
+      if (win) {
+        useWM.getState().focusWindow(win.id);
+        return;
+      }
       set({ open });
       if (open && get().reachable === null) void get().loadModels();
     },
@@ -223,15 +236,17 @@ export const useEmber = create<Ember>()((set, get) => {
     setImageSize: (imageSize) => set({ imageSize }),
 
     send: async (raw) => {
-      const text = raw.trim();
+      const { mode, imageSize, conversationId, screen } = get();
+      const attach = mode === "chat" ? screen : null;
+      const text = raw.trim() || (attach ? "What do you see on my screen?" : "");
       if (!text || get().streaming) return;
-      const { mode, imageSize, conversationId } = get();
       const optimistic: Msg = {
         id: -1,
         role: "user",
         content: text,
         created_at: Date.now() / 1000,
-        data: mode === "image" ? { kind: "image_request", size: imageSize } : {},
+        data:
+          mode === "image" ? { kind: "image_request", size: imageSize } : attach ? { screen: attach } : {},
       };
       set((s) => ({
         streaming: true,
@@ -240,6 +255,7 @@ export const useEmber = create<Ember>()((set, get) => {
         thinking: "",
         view: "chat",
         messages: [...s.messages, optimistic],
+        screen: attach ? null : s.screen,
       }));
       try {
         await streamChat(
@@ -247,6 +263,7 @@ export const useEmber = create<Ember>()((set, get) => {
             text,
             conversation_id: conversationId,
             ...(mode === "image" ? { image: { size: imageSize } } : {}),
+            ...(attach ? { screen: attach } : {}),
           },
           onEvent,
         );
@@ -373,6 +390,23 @@ export const useEmber = create<Ember>()((set, get) => {
     },
 
     resolveApproval: (id) => set((s) => ({ approvals: s.approvals.filter((a) => a.id !== id) })),
+
+    attachScreen: async () => {
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        toastError(
+          "Can't share the screen",
+          new Error("This browser can't capture the screen here (it needs HTTPS)."),
+        );
+        return;
+      }
+      try {
+        set({ screen: await captureScreen() });
+      } catch (err) {
+        if ((err as DOMException)?.name !== "NotAllowedError") toastError("Couldn't capture the screen", err);
+      }
+    },
+
+    clearScreen: () => set({ screen: null }),
 
     takePrefill: () => {
       const p = get().prefill;

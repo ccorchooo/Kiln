@@ -6,6 +6,7 @@ import { spring } from "../components/motion";
 import { useWidgets } from "../widgets/store";
 import { WidgetIslands } from "../widgets/Islands";
 import { APPS } from "./apps";
+import type { Desk } from "./Shell";
 import { useWM } from "./wm";
 
 function IslandButton({
@@ -232,7 +233,7 @@ const fold = {
   exit: { opacity: 0, x: 80, scale: 0.85, transition: { duration: 0.25 } },
 };
 
-export function Taskbar({ mobile }: { mobile: boolean }) {
+export function Taskbar({ mobile, desk }: { mobile: boolean; desk: Desk }) {
   const current = useWM((s) => s.current);
   const taskView = useWM((s) => s.taskView);
   const orbInPill = current !== -1 || taskView;
@@ -296,7 +297,10 @@ export function Taskbar({ mobile }: { mobile: boolean }) {
     // On lock, the outgoing bar fades fast; the shared pills (island → password, tray → lock row)
     // carry the motion via layoutId.
     <motion.div
-      className="pointer-events-none fixed inset-x-3 bottom-3 z-30 flex items-center gap-3"
+      className="pointer-events-none fixed z-30 flex items-center gap-3"
+      initial={false}
+      animate={{ left: desk.left + 12, right: desk.right + 12, bottom: desk.bottom + 12 }}
+      transition={spring}
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
     >
       <motion.div

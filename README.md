@@ -14,7 +14,7 @@ Tailscale network. Ember, the local assistant, lives in the orb.
 
 | Action | How |
 |---|---|
-| Talk to Ember | Click the orb on Home (or Ember in the dock or widget). The sidebar opens on the right; `Esc` closes it. |
+| Talk to Ember | Click the orb on Home (or Ember in the dock or widget). The sidebar docks on the right and the desktop shrinks beside it; `Esc` closes it. The window button pops Ember out as a normal app. |
 | Search apps, windows, settings and actions | `Ctrl+Space` or the magnifier in the center island. `Tab` hands the query to Ember. |
 | Task view (all workspaces) | `Ctrl+Alt+Tab` or the grid button. Drag windows between workspaces; drag the numbers to reorder. |
 | Previous/next workspace | `Ctrl+Alt+←/→`, a horizontal trackpad swipe, or a touch swipe on a title bar or Home |
@@ -126,9 +126,14 @@ Ember talks to any OpenAI-compatible endpoint configured in `[llm]`. The default
 that `local-ai run` starts at `http://127.0.0.1:11435/v1`. Voice uses AXION's TTS at `:8891` and a local
 faster-whisper for speech-to-text. Kiln never calls a cloud API unless you configure one.
 
-- **Sidebar:** the orb on Home opens Ember on the right (a full-screen sheet on phones). Chats are kept on
-  the server; the clock button lists them, the pen starts a new one. Spotlight, Files and the terminal's
-  "Explain selection / Fix last error" hand their text to the sidebar.
+- **Sidebar:** the orb on Home docks Ember on the right; the whole desktop shrinks into a rounded card
+  beside it (a full-screen sheet on phones). The window button in its header opens Ember as a normal app
+  window and closes the sidebar; the panel button there docks it back. Chats are kept on the server; the
+  clock button lists them, the pen starts a new one. Spotlight, Files and the terminal's
+  "Explain selection / Fix last error" hand their text to Ember.
+- **Your screen:** the screen button in the composer asks the browser to share this tab (or anything you
+  pick), takes one frame, and attaches it to your next message for a vision model (marked "vision" in the
+  picker). Nothing keeps recording; the picture is stored with the chat.
 - **Models:** the picker in the header lists every model the AXION router serves (with "vision" and
   "loaded" badges). The choice is remembered on the server; `[llm] model` is only the default.
 - **Tools:** list/read/search/write files (the same jail as Files; protected locations stay closed to

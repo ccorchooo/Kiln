@@ -1,9 +1,12 @@
 /**
- * Ember's sidebar: chat with tool cards and approvals, image mode (ComfyUI), voice, model picker, history.
- * Opened by the orb on Home, the dock, Spotlight hand-offs and the Ember widget.
+ * Ember's sidebar: chat with tool cards and approvals, image mode (ComfyUI), voice, screen sharing,
+ * model picker, history. Opened by the orb on Home, the dock, Spotlight hand-offs and the Ember widget.
+ * On desktop it docks flush to the right and the desktop shrinks beside it (see Shell); the default
+ * export is the same UI as a normal app window.
  */
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AppWindow,
   ArrowUp,
   Ban,
   Check,
@@ -18,7 +21,9 @@ import {
   LoaderCircle,
   MessageCircle,
   Mic,
+  MonitorUp,
   Package,
+  PanelRight,
   ScrollText,
   Search,
   ShieldAlert,
@@ -49,6 +54,8 @@ import { spring } from "../components/motion";
 import { withReauth } from "../components/Reauth";
 import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/store";
+import type { AppProps } from "../shell/apps";
+import { useWM } from "../shell/wm";
 import "../previews/prose.css";
 import { imageUrl, type Approval, type Call, type ImageSize, type Msg, type Risk } from "./api";
 import { useEmber } from "./store";
@@ -93,6 +100,17 @@ const SIZE_LABEL: Partial<Record<ImageSize, string>> = {
 
 export const PANEL_WIDTH = 440;
 
+/** Ember as a normal app window (popped out of the sidebar). */
+export default function EmberApp({ windowId }: AppProps) {
+  const view = useEmber((s) => s.view);
+  return (
+    <div data-ember-panel className="flex h-full min-h-0 flex-col">
+      <Header windowId={windowId} />
+      {view === "history" ? <HistoryView /> : <ChatView />}
+    </div>
+  );
+}
+
 export function EmberPanel({ mobile }: { mobile: boolean }) {
   const open = useEmber((s) => s.open);
   const view = useEmber((s) => s.view);
@@ -115,10 +133,10 @@ export function EmberPanel({ mobile }: { mobile: boolean }) {
           key="ember"
           data-ember-panel
           aria-label={name}
-          className={`window fixed z-[25] flex flex-col overflow-hidden rounded-[24px] ${
-            mobile ? "inset-x-2 top-2 bottom-[70px]" : "top-3 right-3 bottom-[70px]"
+          className={`fixed z-[25] flex flex-col overflow-hidden ${
+            mobile ? "window inset-x-2 top-2 bottom-[70px] rounded-[24px]" : "top-0 right-0 bottom-0"
           }`}
-          style={mobile ? undefined : { width: `min(${PANEL_WIDTH}px, calc(100vw - 24px))` }}
+          style={mobile ? undefined : { width: PANEL_WIDTH }}
           initial={{ opacity: 0, x: mobile ? 0 : 40, y: mobile ? 30 : 0, scale: 0.98 }}
           animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
           exit={{
@@ -167,7 +185,8 @@ function IconButton({
   );
 }
 
-function Header() {
+/** `windowId`: rendered inside an app window (its title bar already names Ember and closes it). */
+function Header({ windowId }: { windowId?: string }) {
   const name = useAuth((s) => s.assistantName);
   const view = useEmber((s) => s.view);
   const streaming = useEmber((s) => s.streaming);
@@ -176,8 +195,12 @@ function Header() {
   const { setView, newChat, setOpen } = useEmber.getState();
   return (
     <header className="flex shrink-0 items-center gap-1 border-b border-hairline px-3 py-2.5">
-      <EmberGlyph className="ml-1 size-6 text-accent" strokeWidth={1.5} />
-      <h2 className="heading-display mr-1 ml-1.5 text-xl text-ink">{name}</h2>
+      {!windowId && (
+        <>
+          <EmberGlyph className="ml-1 size-6 text-accent" strokeWidth={1.5} />
+          <h2 className="heading-display mr-1 ml-1.5 text-xl text-ink">{name}</h2>
+        </>
+      )}
       <ModelPicker />
       <div className="ml-auto flex items-center">
         <IconButton
@@ -203,9 +226,32 @@ function Header() {
         <IconButton label="New chat" disabled={streaming} onClick={newChat}>
           <SquarePen className="size-[18px]" strokeWidth={1.5} />
         </IconButton>
-        <IconButton label={`Close ${name}`} onClick={() => setOpen(false)}>
-          <X className="size-[18px]" strokeWidth={1.5} />
-        </IconButton>
+        {windowId ? (
+          <IconButton
+            label="Dock to the sidebar"
+            onClick={() => {
+              useWM.getState().closeWindow(windowId);
+              setOpen(true);
+            }}
+          >
+            <PanelRight className="size-[18px]" strokeWidth={1.5} />
+          </IconButton>
+        ) : (
+          <>
+            <IconButton
+              label="Open as a window"
+              onClick={() => {
+                setOpen(false);
+                useWM.getState().openApp("assistant", { window: true });
+              }}
+            >
+              <AppWindow className="size-[18px]" strokeWidth={1.5} />
+            </IconButton>
+            <IconButton label={`Close ${name}`} onClick={() => setOpen(false)}>
+              <X className="size-[18px]" strokeWidth={1.5} />
+            </IconButton>
+          </>
+        )}
       </div>
     </header>
   );
@@ -462,6 +508,13 @@ function MessageView({ m, calls }: { m: Msg; calls: Record<string, Call> }) {
   if (m.role === "user")
     return (
       <div className="ml-10 self-end rounded-[18px] rounded-br-[6px] bg-accent-soft px-3.5 py-2 text-[14.5px] whitespace-pre-wrap text-ink">
+        {m.data.screen && (
+          <img
+            src={m.data.screen}
+            alt="Shared screen"
+            className="mb-1.5 max-h-40 rounded-[10px] border border-hairline"
+          />
+        )}
         {m.data.kind === "image_request" && (
           <ImageIcon className="mr-1.5 mb-0.5 inline size-3.5 text-accent-ink" strokeWidth={1.75} />
         )}
@@ -692,6 +745,7 @@ function Composer() {
   const prefill = useEmber((s) => s.prefill);
   const open = useEmber((s) => s.open);
   const voice = useVoice((s) => s.phase);
+  const screen = useEmber((s) => s.screen);
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const { send, stop, setMode, setImageSize } = useEmber.getState();
@@ -714,8 +768,9 @@ function Composer() {
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   }, [text]);
 
+  const canSend = !!text.trim() || (mode === "chat" && !!screen);
   const submit = () => {
-    if (!text.trim() || streaming) return;
+    if (!canSend || streaming) return;
     void send(text);
     setText("");
   };
@@ -732,6 +787,23 @@ function Composer() {
   return (
     <div className="shrink-0 border-t border-hairline p-3">
       <div className="pill-focus rounded-[20px] border border-hairline bg-[color-mix(in_srgb,var(--surface)_70%,transparent)] px-3 pt-2.5 pb-2">
+        {screen && mode === "chat" && (
+          <div className="group relative mb-2 w-fit">
+            <img
+              src={screen}
+              alt="Screen to share"
+              className="max-h-20 rounded-[10px] border border-hairline"
+            />
+            <button
+              type="button"
+              onClick={() => useEmber.getState().clearScreen()}
+              aria-label="Remove the screenshot"
+              className="glass absolute -top-2 -right-2 grid size-6 place-items-center rounded-full text-ink"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
         <textarea
           ref={ref}
           rows={1}
@@ -783,6 +855,19 @@ function Composer() {
           {mode === "chat" && (
             <button
               type="button"
+              onClick={() => void useEmber.getState().attachScreen()}
+              aria-label={`Show ${name} your screen`}
+              title={`Show ${name} your screen`}
+              className={`grid size-8 place-items-center rounded-full transition hover:bg-[var(--hairline)] ${
+                screen ? "text-accent-ink" : "text-ink-2"
+              }`}
+            >
+              <MonitorUp className="size-4" strokeWidth={1.75} />
+            </button>
+          )}
+          {mode === "chat" && (
+            <button
+              type="button"
               onClick={() => void toggleListening()}
               disabled={voice === "transcribing"}
               aria-pressed={voice === "listening"}
@@ -817,7 +902,7 @@ function Composer() {
             <button
               type="button"
               onClick={submit}
-              disabled={!text.trim()}
+              disabled={!canSend}
               aria-label={mode === "image" ? "Generate" : "Send"}
               className="hover-lift grid size-8 place-items-center rounded-full bg-accent-fill text-on-accent disabled:opacity-40"
             >

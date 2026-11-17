@@ -6,13 +6,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useCallback, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { spring, springSoft } from "../components/motion";
-import { PANEL_WIDTH } from "../ember/EmberPanel";
 import { useEmber } from "../ember/store";
 import { useVoice } from "../ember/voice";
 import { useAuth } from "../lib/store";
 import { useToasts } from "../lib/toasts";
 import { OrbAnchor } from "../three/OrbAnchor";
 import { APPS } from "./apps";
+import type { Desk } from "./Shell";
 import { useSwipe } from "./hooks";
 import { WorkspacePage } from "./WorkspacePage";
 import { MAX_PER_WORKSPACE, useWM } from "./wm";
@@ -24,20 +24,15 @@ function HomePage({ showOrb, mobile }: { showOrb: boolean; mobile: boolean }) {
   const assistant = useAuth((s) => s.assistantName);
   const taskView = useWM((s) => s.taskView);
   const panelOpen = useEmber((s) => s.open);
-  // On desktop the sidebar covers the right; keep the orb centred in what's left.
-  const shift = panelOpen && !mobile ? PANEL_WIDTH + 12 : 0;
   return (
     <div
       data-swipe
       className="absolute inset-0 flex flex-col items-center justify-center pb-24"
-      style={{ paddingRight: shift }}
       inert={taskView}
     >
       <div className="relative">
         {showOrb && !(panelOpen && mobile) ? (
           <OrbAnchor
-            untransformed
-            refreshKey={shift}
             className="aspect-square w-[min(44vh,62vw)]"
             label={panelOpen ? `Close ${assistant}` : `Open ${assistant}`}
             onActivate={() => useEmber.getState().toggle()}
@@ -89,7 +84,7 @@ interface DragState {
   moved: boolean;
 }
 
-export function Strip({ vw, vh, mobile }: { vw: number; vh: number; mobile: boolean }) {
+export function Strip({ vw, vh, desk, mobile }: { vw: number; vh: number; desk: Desk; mobile: boolean }) {
   const workspaces = useWM((s) => s.workspaces);
   const current = useWM((s) => s.current);
   const taskView = useWM((s) => s.taskView);
@@ -154,6 +149,8 @@ export function Strip({ vw, vh, mobile }: { vw: number; vh: number; mobile: bool
           <motion.div
             key="tv-backdrop"
             className="fixed inset-0 z-[5] bg-[color-mix(in_srgb,var(--bg)_30%,transparent)] backdrop-blur-xl"
+            // Fade out over the taskbar row: the orb (WebGL, under this layer) sits in the Ember widget.
+            style={{ maskImage: "linear-gradient(to top, transparent 64px, black 104px)" }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -164,9 +161,9 @@ export function Strip({ vw, vh, mobile }: { vw: number; vh: number; mobile: bool
       </AnimatePresence>
       <motion.div
         ref={rootRef}
-        className="pointer-events-none fixed inset-0 z-[6]"
+        className="pointer-events-none fixed z-[6]"
         initial={false}
-        animate={{ scale: taskView ? TV_SCALE : 1 }}
+        animate={{ scale: taskView ? TV_SCALE : 1, ...desk }}
         transition={springSoft}
         style={{ originY: 0.44 }}
         exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.25 } }}

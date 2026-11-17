@@ -55,13 +55,6 @@ export type Quality = "high" | "balanced" | "low" | "off";
 export type QualityPref = Quality | "auto";
 export type OrbMood = "idle" | "listening" | "thinking" | "speaking" | "approval" | "error";
 
-export interface OrbAnchor {
-  owner: string;
-  cx: number;
-  cy: number;
-  size: number;
-}
-
 interface UIStore {
   mode: Mode;
   themeId: string;
@@ -70,8 +63,7 @@ interface UIStore {
   quality: Quality; // effective
   reducedMotion: boolean;
   orbMood: OrbMood;
-  orbAnchor: OrbAnchor | null;
-  // Live audio drivers for the orb (0..1); written by the voice pipeline in Phase 7.
+  // Live audio drivers for the orb (0..1); written by the voice pipeline (ember/voice.ts).
   audio: { level: number; bands: [number, number, number, number] };
   set: (patch: Partial<Omit<UIStore, "set">>) => void;
 }
@@ -84,7 +76,6 @@ export const useUI = create<UIStore>((set) => ({
   quality: "high",
   reducedMotion: false,
   orbMood: "idle",
-  orbAnchor: null,
   audio: { level: 0, bands: [0, 0, 0, 0] },
   set: (patch) => set(patch),
 }));

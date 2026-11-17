@@ -1,16 +1,34 @@
-/** The unlocked desktop: workspace strip (Home + workspaces), taskbar, Spotlight, task view. */
+/**
+ * The unlocked desktop: workspace strip (Home + workspaces), taskbar, Spotlight, task view.
+ * With Ember docked (desktop), the whole desktop shrinks into a rounded card and a solid frame
+ * wraps around it and behind the sidebar.
+ */
 import { motion } from "framer-motion";
 import { useEffect } from "react";
-import { EmberPanel } from "../ember/EmberPanel";
+import { spring } from "../components/motion";
+import { EmberPanel, PANEL_WIDTH } from "../ember/EmberPanel";
+import { useEmber } from "../ember/store";
 import { useIsMobile, useViewport } from "./hooks";
 import { Spotlight } from "./Spotlight";
 import { Strip } from "./Strip";
 import { Taskbar } from "./Taskbar";
 import { useWM } from "./wm";
 
+export interface Desk {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+const FULL: Desk = { left: 0, top: 0, right: 0, bottom: 0 };
+const FRAME = 8;
+
 export function Shell() {
   const { vw, vh } = useViewport();
   const mobile = useIsMobile();
+  const docked = useEmber((s) => s.open) && !mobile;
+  const desk: Desk = docked ? { left: FRAME, top: FRAME, right: PANEL_WIDTH, bottom: FRAME } : FULL;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -61,9 +79,23 @@ export function Shell() {
 
   return (
     <motion.main className="fixed inset-0 z-10" aria-label="Kiln desktop" exit={{ opacity: 1 }}>
-      <Strip vw={vw} vh={vh} mobile={mobile} />
+      <Strip vw={vw - desk.left - desk.right} vh={vh - desk.top - desk.bottom} desk={desk} mobile={mobile} />
+      {/* The frame: everything outside the card, via a huge spread shadow around its rounded hole. */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none fixed z-[24]"
+        initial={false}
+        animate={{
+          ...desk,
+          borderRadius: docked ? 22 : 0,
+          boxShadow: docked
+            ? "0 0 0 1px var(--hairline), 0 0 0 200vmax var(--surface-solid)"
+            : "0 0 0 0px var(--hairline), 0 0 0 200vmax transparent",
+        }}
+        transition={spring}
+      />
       <EmberPanel mobile={mobile} />
-      <Taskbar mobile={mobile} />
+      <Taskbar mobile={mobile} desk={desk} />
       <Spotlight />
     </motion.main>
   );

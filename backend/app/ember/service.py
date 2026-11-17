@@ -103,7 +103,15 @@ def _title(text: str) -> str:
     return (line[:57] + "…") if len(line) > 58 else (line or "New chat")
 
 
+IMAGE_TOKENS = 1500  # rough cost of one screenshot for a vision model
+
+
 def _approx_tokens(msg: dict[str, Any]) -> int:
+    content = msg.get("content")
+    if isinstance(content, list):  # text + image parts: don't count the base64 as text
+        text = sum(len(p.get("text", "")) for p in content if p.get("type") == "text")
+        images = sum(1 for p in content if p.get("type") == "image_url")
+        return text // 3 + IMAGE_TOKENS * images + 4
     return len(json.dumps(msg, ensure_ascii=False)) // 3 + 4
 
 
@@ -196,7 +204,14 @@ class EmberService:
         await self.state.db.conn.execute("UPDATE ember_conversations SET updated_at = ? WHERE id = ?", (now, cid))
         return {"id": mid, "role": role, "content": content, "data": data or {}, "created_at": now}
 
-    async def _history(self, cid: str) -> list[dict[str, Any]]:
+    async def supports_vision(self, model: str) -> bool:
+        try:
+            listing = await self.llm.models()
+        except Exception:
+            return False
+        return any(m["vision"] for m in listing if model == m["id"] or model in m["aliases"])
+
+    async def _history(self, cid: str, vision: bool = False) -> list[dict[str, Any]]:
         async with self.state.db.conn.execute(
             "SELECT role, content, data FROM ember_messages WHERE conversation_id = ? ORDER BY id", (cid,)
         ) as cur:
@@ -222,6 +237,15 @@ class EmberService:
                 out.append(msg)
             elif r["role"] == "tool":
                 out.append({"role": "tool", "tool_call_id": data.get("tool_call_id", ""), "content": r["content"]})
+            elif data.get("screen") and vision:
+                parts = [
+                    {"type": "text", "text": r["content"]},
+                    {"type": "image_url", "image_url": {"url": data["screen"]}},
+                ]
+                out.append({"role": "user", "content": parts})
+            elif data.get("screen"):
+                note = "\n\n[A screenshot was attached, but the current model can't see images.]"
+                out.append({"role": "user", "content": r["content"] + note})
             else:
                 out.append({"role": "user", "content": r["content"]})
         return out
@@ -262,8 +286,16 @@ class EmberService:
         return cid in self.runs
 
     async def start(
-        self, session_id: str, cid: str | None, text: str, image: dict[str, Any] | None, ip: str | None
+        self,
+        session_id: str,
+        cid: str | None,
+        text: str,
+        image: dict[str, Any] | None,
+        ip: str | None,
+        screen: str | None = None,
     ) -> tuple[str, Run]:
+        if screen and not await self.supports_vision(await self.current_model()):
+            raise ValueError("The current model can't see images. Pick one marked “vision”.")
         if cid is not None:
             if cid in self.runs:
                 raise EmberBusy("Ember is still answering in this chat")
@@ -273,7 +305,7 @@ class EmberService:
             cid = await self._create_conversation(_title(text))
         run = Run(conversation_id=cid, session_id=session_id)
         self.runs[cid] = run
-        run.task = asyncio.create_task(self._produce(run, text, image, ip))
+        run.task = asyncio.create_task(self._produce(run, text, image, ip, screen))
         return cid, run
 
     async def stream(self, run: Run) -> AsyncIterator[bytes]:
@@ -306,13 +338,16 @@ class EmberService:
     async def stop_all(self) -> None:
         await self.panic()
 
-    async def _produce(self, run: Run, text: str, image: dict[str, Any] | None, ip: str | None) -> None:
+    async def _produce(
+        self, run: Run, text: str, image: dict[str, Any] | None, ip: str | None, screen: str | None = None
+    ) -> None:
         cid = run.conversation_id
         emit = run.queue.put_nowait
         partial: dict[str, str] = {"content": ""}
         try:
             conv = await self.get_conversation(cid)
-            user_msg = await self._add(cid, "user", text, {"kind": "image_request", **image} if image else {})
+            data = {"kind": "image_request", **image} if image else {"screen": screen} if screen else {}
+            user_msg = await self._add(cid, "user", text, data)
             emit(
                 {
                     "type": "start",
@@ -404,10 +439,11 @@ class EmberService:
         cid = run.conversation_id
         q = run.queue
         model = await self.current_model()
+        vision = await self.supports_vision(model)
         system = {"role": "system", "content": self._system_prompt()}
         for _round in range(max(1, self.state.config.llm.max_tool_rounds)):
             await self.comfy.free()
-            messages = self._fit(system, await self._history(cid))
+            messages = self._fit(system, await self._history(cid, vision))
             partial["content"] = ""
             turn = None
             q.put_nowait({"type": "turn", "model": model})

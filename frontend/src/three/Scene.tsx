@@ -2,25 +2,22 @@
  * One shared WebGL canvas for the wallpaper and the orb.
  *
  * Pipeline per frame (manual, useFrame priority 1):
- *   1. wallpaper shader → low-res render target (every other frame; it moves slowly)
- *   2. composite → screen: upscale + orb halo/shadow + full-res film grain
- *   3. orb (R3F scene, perspective camera) on top
- * With quality "low" steps 1–2 are skipped and the canvas is transparent over the CSS wallpaper.
+ *   1. wallpaper → screen at full resolution (gradient, orb halo/shadow, dither, grain)
+ *   2. orb (R3F scene, perspective camera) on top
+ * With quality "low" step 1 is skipped and the canvas is transparent over the CSS wallpaper.
  */
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { useUI, type OrbMood, type Quality } from "../lib/store";
 import { getTheme, type Palette } from "../theme/themes";
-import { COMPOSITE_FRAG, FULLSCREEN_VERT, ORB_FRAG, ORB_VERT, WALLPAPER_FRAG } from "./shaders";
+import { readOrbAnchor } from "./OrbAnchor";
+import { FULLSCREEN_VERT, ORB_FRAG, ORB_VERT, WALLPAPER_FRAG } from "./shaders";
 
-const QUALITY: Record<
-  Exclude<Quality, "off">,
-  { dpr: number; rtScale: number; detail: number; wallpaper: boolean }
-> = {
-  high: { dpr: 1.5, rtScale: 0.5, detail: 64, wallpaper: true },
-  balanced: { dpr: 1.25, rtScale: 0.35, detail: 40, wallpaper: true },
-  low: { dpr: 1, rtScale: 0.25, detail: 24, wallpaper: false },
+const QUALITY: Record<Exclude<Quality, "off">, { dpr: number; detail: number; wallpaper: boolean }> = {
+  high: { dpr: 1.5, detail: 64, wallpaper: true },
+  balanced: { dpr: 1.25, detail: 40, wallpaper: true },
+  low: { dpr: 1, detail: 24, wallpaper: false },
 };
 
 const MOOD_KEYS = ["listen", "think", "speak", "approval", "error"] as const;
@@ -41,6 +38,26 @@ function vec3(hex: string): THREE.Vector3 {
 
 function lerpHex(a: string, b: string, t: number, out = new THREE.Vector3()): THREE.Vector3 {
   return out.copy(vec3(a)).lerp(vec3(b), t);
+}
+
+/** sRGB hex → OKLab (L, a, b). */
+function oklab(hex: string): THREE.Vector3 {
+  const lin = (c: THREE.Vector3) =>
+    c.toArray().map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const [r, g, b] = lin(vec3(hex)) as [number, number, number];
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return new THREE.Vector3(
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  );
+}
+
+/** Wallpaper colors as an OKLab ramp from the base (lightest in light mode, darkest in dark) to the accent. */
+function wallpaperRamp(colors: string[], dark: boolean): THREE.Vector3[] {
+  return colors.map(oklab).sort((a, b) => (dark ? a.x - b.x : b.x - a.x));
 }
 
 /** Gentle palette shift through the day (multiplier near 1). */
@@ -85,7 +102,6 @@ function Pipeline({ quality }: { quality: Exclude<Quality, "off"> }) {
   const q = QUALITY[quality];
   const { gl, size, viewport, camera } = useThree();
   const orbRef = useRef<THREE.Mesh>(null);
-  const frame = useRef(0);
   const fps = useRef({ acc: 0, n: 0, slow: 0 });
   const springs = useRef({ x: { x: 0, v: 0 }, y: { x: 0, v: 0 }, s: { x: 0, v: 0 }, init: false });
   const weights = useRef<Record<MoodKey, number>>({ listen: 0, think: 0, speak: 0, approval: 0, error: 0 });
@@ -100,18 +116,20 @@ function Pipeline({ quality }: { quality: Exclude<Quality, "off"> }) {
 
   const ortho = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), []);
   const tri = useMemo(fullscreenTriangle, []);
-  const rt = useMemo(
-    () => new THREE.WebGLRenderTarget(4, 4, { depthBuffer: false, type: THREE.UnsignedByteType }),
-    [],
-  );
   const wp = useMemo(() => {
     const u = {
+      uRes: { value: new THREE.Vector2(1, 1) },
       uTime: { value: 0 },
-      uAspect: { value: 1 },
       uDark: { value: 0 },
       uLight: { value: [] as THREE.Vector3[] },
       uDarkPal: { value: [] as THREE.Vector3[] },
       uTint: { value: new THREE.Vector3(1, 1, 1) },
+      uGrain: { value: 0.035 },
+      uOrb: { value: new THREE.Vector2(0.5, 0.5) },
+      uOrbR: { value: 0.1 },
+      uGlow: { value: 0 },
+      uOrbVisible: { value: 0 },
+      uGlowColor: { value: new THREE.Vector3(1, 0.8, 0.6) },
     };
     const mat = new THREE.ShaderMaterial({
       vertexShader: FULLSCREEN_VERT,
@@ -126,32 +144,6 @@ function Pipeline({ quality }: { quality: Exclude<Quality, "off"> }) {
     scene.add(mesh);
     return { scene, mat, u };
   }, [tri]);
-  const comp = useMemo(() => {
-    const u = {
-      uTex: { value: rt.texture },
-      uRes: { value: new THREE.Vector2(1, 1) },
-      uTime: { value: 0 },
-      uGrain: { value: 0.035 },
-      uOrb: { value: new THREE.Vector2(0.5, 0.5) },
-      uOrbR: { value: 0.1 },
-      uGlow: { value: 0 },
-      uOrbVisible: { value: 0 },
-      uGlowColor: { value: new THREE.Vector3(1, 0.8, 0.6) },
-      uDark: { value: 0 },
-    };
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: FULLSCREEN_VERT,
-      fragmentShader: COMPOSITE_FRAG,
-      depthTest: false,
-      depthWrite: false,
-      uniforms: u,
-    });
-    const scene = new THREE.Scene();
-    const mesh = new THREE.Mesh(tri, mat);
-    mesh.frustumCulled = false;
-    scene.add(mesh);
-    return { scene, mat, u };
-  }, [tri, rt]);
   const orb = useMemo(() => {
     const u = {
       uTime: { value: 0 },
@@ -183,25 +175,13 @@ function Pipeline({ quality }: { quality: Exclude<Quality, "off"> }) {
 
   useEffect(
     () => () => {
-      rt.dispose();
       tri.dispose();
       wp.mat.dispose();
-      comp.mat.dispose();
       orbMat.dispose();
     },
-    [rt, tri, wp, comp, orbMat],
+    [tri, wp, orbMat],
   );
   useEffect(() => () => orbGeo.dispose(), [orbGeo]);
-
-  useEffect(() => {
-    const dpr = gl.getPixelRatio();
-    rt.setSize(
-      Math.max(8, Math.round(size.width * dpr * q.rtScale)),
-      Math.max(8, Math.round(size.height * dpr * q.rtScale)),
-    );
-    rt.texture.minFilter = rt.texture.magFilter = THREE.LinearFilter;
-    frame.current = 0;
-  }, [gl, size.width, size.height, q.rtScale, rt]);
 
   useFrame((state, rawDt) => {
     const dt = Math.min(rawDt, 1 / 20);
@@ -224,7 +204,7 @@ function Pipeline({ quality }: { quality: Exclude<Quality, "off"> }) {
     lv.level += (ui.audio.level - lv.level) * ease(18);
 
     // position: spring toward the active DOM anchor
-    const anchor = ui.orbAnchor;
+    const anchor = readOrbAnchor();
     const sp = springs.current;
     const k = viewport.height / size.height; // world units per CSS px at z = 0
     lv.visible += ((anchor ? 1 : 0) - lv.visible) * ease(5);
@@ -279,44 +259,34 @@ function Pipeline({ quality }: { quality: Exclude<Quality, "off"> }) {
     if (q.wallpaper) {
       const wu = wp.u;
       wu.uTime.value = ui.reducedMotion ? 0 : t;
-      wu.uAspect.value = size.width / size.height;
+      wu.uRes.value.set(size.width, size.height);
       wu.uDark.value = lv.dark;
       if (palCache.current?.id !== theme.id) {
         palCache.current = {
           id: theme.id,
-          light: L.wallpaper.map((c) => vec3(c)),
-          dark: D.wallpaper.map((c) => vec3(c)),
+          light: wallpaperRamp(L.wallpaper, false),
+          dark: wallpaperRamp(D.wallpaper, true),
         };
       }
       wu.uLight.value = palCache.current.light;
       wu.uDarkPal.value = palCache.current.dark;
       wu.uTint.value = tint.current;
-      if (frame.current % 2 === 0) {
-        gl.setRenderTarget(rt);
-        gl.render(wp.scene, ortho);
-        gl.setRenderTarget(null);
-      }
-      const cu = comp.u;
-      cu.uTime.value = ui.reducedMotion ? 0 : t;
-      cu.uRes.value.set(size.width, size.height);
-      cu.uGrain.value = L.grain + (D.grain - L.grain) * lv.dark;
-      cu.uDark.value = lv.dark;
+      wu.uGrain.value = L.grain + (D.grain - L.grain) * lv.dark;
       if (anchor) {
-        cu.uOrb.value.set(sp.x.x / k / size.width + 0.5, sp.y.x / k / size.height + 0.5);
-        cu.uOrbR.value = sp.s.x / k / size.height;
+        wu.uOrb.value.set(sp.x.x / k / size.width + 0.5, sp.y.x / k / size.height + 0.5);
+        wu.uOrbR.value = sp.s.x / k / size.height;
       }
-      cu.uOrbVisible.value = lv.visible;
+      wu.uOrbVisible.value = lv.visible;
       lv.glow += (w.speak * (0.4 + 0.6 * lv.level) - lv.glow) * ease(6);
-      cu.uGlow.value = lv.glow;
-      lerpHex(L.orb[1], D.orb[1], lv.dark, cu.uGlowColor.value);
+      wu.uGlow.value = lv.glow;
+      lerpHex(L.orb[1], D.orb[1], lv.dark, wu.uGlowColor.value);
       gl.clear();
-      gl.render(comp.scene, ortho);
+      gl.render(wp.scene, ortho);
     } else {
       gl.clear();
     }
     gl.clearDepth();
     gl.render(state.scene, camera);
-    frame.current++;
 
     // Auto quality: step down after sustained low frame rate.
     const f = fps.current;

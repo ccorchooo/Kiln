@@ -27,9 +27,10 @@ function Divider({ ws, area, taskView }: { ws: Workspace; area: Box; taskView: b
 
   const move = (e: RPointerEvent) => {
     if (live === null) return;
+    const page = e.currentTarget.parentElement!.getBoundingClientRect(); // the desk may be inset
     const raw = row
-      ? (e.clientX - area.x - GAP / 2) / (area.w - GAP)
-      : (e.clientY - area.y - GAP / 2) / (area.h - GAP);
+      ? (e.clientX - page.left - area.x - GAP / 2) / (area.w - GAP)
+      : (e.clientY - page.top - area.y - GAP / 2) / (area.h - GAP);
     setLive(rubber(raw, RATIO_MIN, RATIO_MAX));
   };
   const end = () => {
