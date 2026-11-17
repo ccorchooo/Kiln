@@ -100,13 +100,51 @@ const SIZE_LABEL: Partial<Record<ImageSize, string>> = {
 
 export const PANEL_WIDTH = 440;
 
-/** Ember as a normal app window (popped out of the sidebar). */
+/** Ember as a normal app window (popped out of the sidebar): chats and actions in a left column. */
 export default function EmberApp({ windowId }: AppProps) {
-  const view = useEmber((s) => s.view);
+  const streaming = useEmber((s) => s.streaming);
+  const conversationId = useEmber((s) => s.conversationId);
+  const { newChat, setOpen, setView } = useEmber.getState();
+
+  useEffect(() => setView("chat"), [setView]);
+  // Keep the list fresh: new chats get their title once the first reply is stored.
+  useEffect(() => {
+    if (!streaming) void useEmber.getState().loadHistory();
+  }, [streaming, conversationId]);
+
   return (
-    <div data-ember-panel className="flex h-full min-h-0 flex-col">
-      <Header windowId={windowId} />
-      {view === "history" ? <HistoryView /> : <ChatView />}
+    <div data-ember-panel className="flex h-full min-h-0">
+      <nav aria-label="Chats" className="flex w-56 shrink-0 flex-col border-r border-hairline">
+        <div className="p-2">
+          <button
+            type="button"
+            onClick={newChat}
+            disabled={streaming}
+            className="flex h-9 w-full items-center gap-2 rounded-[12px] px-3 text-sm text-ink transition hover:bg-[var(--hairline)] disabled:opacity-40"
+          >
+            <SquarePen className="size-4 text-ink-2" strokeWidth={1.5} />
+            New chat
+          </button>
+        </div>
+        <p className="px-4 pt-1 pb-1 text-[11px] font-medium tracking-wide text-ink-2 uppercase">Recent</p>
+        <HistoryView />
+        <div className="flex items-center gap-1 border-t border-hairline p-2">
+          <SpeakToggle />
+          <span className="flex-1" />
+          <IconButton
+            label="Dock to the sidebar"
+            onClick={() => {
+              useWM.getState().closeWindow(windowId);
+              setOpen(true);
+            }}
+          >
+            <PanelRight className="size-[18px]" strokeWidth={1.5} />
+          </IconButton>
+        </div>
+      </nav>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <ChatView />
+      </div>
     </div>
   );
 }
@@ -185,37 +223,35 @@ function IconButton({
   );
 }
 
-/** `windowId`: rendered inside an app window (its title bar already names Ember and closes it). */
-function Header({ windowId }: { windowId?: string }) {
+function SpeakToggle() {
+  const speaking = useVoice((s) => s.phase === "speaking");
+  const speakReplies = useVoice((s) => s.speakReplies);
+  return (
+    <IconButton
+      label={speaking ? "Stop speaking" : speakReplies ? "Stop reading replies aloud" : "Read replies aloud"}
+      active={speakReplies}
+      onClick={() => (speaking ? stopSpeaking() : setSpeakReplies(!speakReplies))}
+    >
+      {speakReplies || speaking ? (
+        <Volume2 className="size-[18px]" strokeWidth={1.5} />
+      ) : (
+        <VolumeX className="size-[18px]" strokeWidth={1.5} />
+      )}
+    </IconButton>
+  );
+}
+
+function Header() {
   const name = useAuth((s) => s.assistantName);
   const view = useEmber((s) => s.view);
   const streaming = useEmber((s) => s.streaming);
-  const speaking = useVoice((s) => s.phase === "speaking");
-  const speakReplies = useVoice((s) => s.speakReplies);
   const { setView, newChat, setOpen } = useEmber.getState();
   return (
     <header className="flex shrink-0 items-center gap-1 border-b border-hairline px-3 py-2.5">
-      {!windowId && (
-        <>
-          <EmberGlyph className="ml-1 size-6 text-accent" strokeWidth={1.5} />
-          <h2 className="heading-display mr-1 ml-1.5 text-xl text-ink">{name}</h2>
-        </>
-      )}
-      <ModelPicker />
+      <EmberGlyph className="ml-1 size-6 text-accent" strokeWidth={1.5} />
+      <h2 className="heading-display mr-1 ml-1.5 text-xl text-ink">{name}</h2>
       <div className="ml-auto flex items-center">
-        <IconButton
-          label={
-            speaking ? "Stop speaking" : speakReplies ? "Stop reading replies aloud" : "Read replies aloud"
-          }
-          active={speakReplies}
-          onClick={() => (speaking ? stopSpeaking() : setSpeakReplies(!speakReplies))}
-        >
-          {speakReplies || speaking ? (
-            <Volume2 className="size-[18px]" strokeWidth={1.5} />
-          ) : (
-            <VolumeX className="size-[18px]" strokeWidth={1.5} />
-          )}
-        </IconButton>
+        <SpeakToggle />
         <IconButton
           label={view === "history" ? "Back to chat" : "Chats"}
           active={view === "history"}
@@ -226,32 +262,18 @@ function Header({ windowId }: { windowId?: string }) {
         <IconButton label="New chat" disabled={streaming} onClick={newChat}>
           <SquarePen className="size-[18px]" strokeWidth={1.5} />
         </IconButton>
-        {windowId ? (
-          <IconButton
-            label="Dock to the sidebar"
-            onClick={() => {
-              useWM.getState().closeWindow(windowId);
-              setOpen(true);
-            }}
-          >
-            <PanelRight className="size-[18px]" strokeWidth={1.5} />
-          </IconButton>
-        ) : (
-          <>
-            <IconButton
-              label="Open as a window"
-              onClick={() => {
-                setOpen(false);
-                useWM.getState().openApp("assistant", { window: true });
-              }}
-            >
-              <AppWindow className="size-[18px]" strokeWidth={1.5} />
-            </IconButton>
-            <IconButton label={`Close ${name}`} onClick={() => setOpen(false)}>
-              <X className="size-[18px]" strokeWidth={1.5} />
-            </IconButton>
-          </>
-        )}
+        <IconButton
+          label="Open as a window"
+          onClick={() => {
+            setOpen(false);
+            useWM.getState().openApp("assistant", { window: true });
+          }}
+        >
+          <AppWindow className="size-[18px]" strokeWidth={1.5} />
+        </IconButton>
+        <IconButton label={`Close ${name}`} onClick={() => setOpen(false)}>
+          <X className="size-[18px]" strokeWidth={1.5} />
+        </IconButton>
       </div>
     </header>
   );
@@ -292,7 +314,7 @@ function ModelPicker() {
         onClick={() => setOpen(!open)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="num flex h-8 max-w-[170px] items-center gap-1.5 rounded-full border border-hairline px-3 text-xs text-ink-2 transition hover:text-ink"
+        className="num flex h-7 max-w-[220px] items-center gap-1.5 rounded-full px-2.5 text-xs text-ink-2 transition hover:bg-[var(--hairline)] hover:text-ink"
       >
         <span
           className={`size-1.5 shrink-0 rounded-full ${reachable === false ? "bg-danger" : reachable ? "bg-success" : "bg-[var(--hairline-strong)]"}`}
@@ -305,10 +327,10 @@ function ModelPicker() {
           <motion.ul
             role="listbox"
             aria-label="Model"
-            className="glass absolute top-10 left-0 z-10 w-64 rounded-[16px] p-1.5"
-            initial={{ opacity: 0, y: -6 }}
+            className="absolute right-0 bottom-9 z-10 w-64 rounded-[16px] border border-hairline bg-[var(--surface-solid)] p-1.5 shadow-[0_18px_50px_-16px_var(--shadow-color)]"
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
+            exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.15 }}
           >
             {reachable === false && (
@@ -363,7 +385,7 @@ function HistoryView() {
   if (!conversations.length)
     return <p className="flex flex-1 items-center justify-center p-8 text-sm text-ink-2">No chats yet.</p>;
   return (
-    <ul className="flex-1 overflow-y-auto p-2">
+    <ul className="min-h-0 flex-1 overflow-y-auto p-2">
       {conversations.map((c) => (
         <li key={c.id} className="group flex items-center">
           <button
@@ -375,7 +397,7 @@ function HistoryView() {
           >
             <span className="truncate text-sm text-ink">{c.title}</span>
             <span className="num text-[11px] text-ink-2">
-              {new Date(c.updated_at * 1000).toLocaleString()}
+              {new Date(c.updated_at * 1000).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
             </span>
           </button>
           <button
@@ -910,6 +932,9 @@ function Composer() {
             </button>
           )}
         </div>
+      </div>
+      <div className="mt-1.5 flex justify-end">
+        <ModelPicker />
       </div>
     </div>
   );
