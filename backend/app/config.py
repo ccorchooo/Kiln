@@ -77,6 +77,22 @@ class LLMConfig:
     api_key: str = "axion-local"
     context_length: int = 16384
     temperature: float = 0.7
+    # Release the router's loaded model before an image job (the GPU is shared with ComfyUI).
+    unload_for_images: bool = True
+    max_tool_rounds: int = 8
+
+
+@dataclass
+class ImageConfig:
+    comfyui_url: str = "http://127.0.0.1:8188"  # AXION's ComfyUI (local-ai run)
+    output_dir: str = "~/Pictures/Kiln"  # inside the files jail, so Files can open the results
+    unet: str = "z-image-turbo-Q5_K_M.gguf"
+    vae: str = "ae.safetensors"
+    clip: str = "qwen_3_4b_fp8_mixed.safetensors"
+    clip_type: str = "lumina2"
+    steps: int = 10
+    shift: float = 3.0
+    timeout_seconds: float = 300.0
 
 
 @dataclass
@@ -148,6 +164,7 @@ class Config:
     location: LocationConfig = field(default_factory=LocationConfig)
     appearance: AppearanceConfig = field(default_factory=AppearanceConfig)
     llm: LLMConfig = field(default_factory=LLMConfig)
+    image: ImageConfig = field(default_factory=ImageConfig)
     voice: VoiceConfig = field(default_factory=VoiceConfig)
     files: FilesConfig = field(default_factory=FilesConfig)
     approvals: ApprovalConfig = field(default_factory=ApprovalConfig)
@@ -216,6 +233,7 @@ def load_config(path: Path | None = None, env: dict[str, str] | None = None) -> 
             setattr(cfg.server, attr, os.path.expanduser(val))
     cfg.data_dir = os.path.expanduser(cfg.data_dir)
     cfg.files.jail_root = os.path.expanduser(cfg.files.jail_root)
+    cfg.image.output_dir = os.path.expanduser(cfg.image.output_dir)
     if cfg.appearance.mode not in {"auto", "light", "dark"}:
         raise ValueError("appearance.mode must be auto, light or dark")
     return cfg

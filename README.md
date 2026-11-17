@@ -3,8 +3,9 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 5 of 10.** Files, previews and the editor are in. The terminal arrived in Phase 4, widgets in Phase 3.
-> Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
+> **Status: Phase 6 of 10.** Ember, the assistant, is in: chat with tools, approvals, image generation
+> and a model picker, in a sidebar the orb opens. Files, previews and the editor arrived in Phase 5, the terminal
+> in Phase 4, widgets in Phase 3. Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
 > (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
 > until their phases land. See [Roadmap](#roadmap).
 
@@ -12,6 +13,7 @@ Tailscale network. Ember, the local assistant, lives in the orb.
 
 | Action | How |
 |---|---|
+| Talk to Ember | Click the orb on Home (or Ember in the dock or widget). The sidebar opens on the right; `Esc` closes it. |
 | Search apps, windows, settings and actions | `Ctrl+Space` or the magnifier in the center island. `Tab` hands the query to Ember. |
 | Task view (all workspaces) | `Ctrl+Alt+Tab` or the grid button. Drag windows between workspaces; drag the numbers to reorder. |
 | Previous/next workspace | `Ctrl+Alt+←/→`, a horizontal trackpad swipe, or a touch swipe on a title bar or Home |
@@ -101,12 +103,30 @@ sudo firewall-cmd --permanent --zone=trusted --add-port=8443/tcp
 sudo firewall-cmd --reload     # and make sure 8443 is NOT open in your default zone
 ```
 
-## Local AI
+## Ember
 
 Ember talks to any OpenAI-compatible endpoint configured in `[llm]`. The default is the **AXION** router
-that `local-ai run` starts at `http://127.0.0.1:11435/v1`, with `qwen3.5:4b`. Voice (Phase 7) uses AXION's
-TTS at `:8891` and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you
-configure one.
+that `local-ai run` starts at `http://127.0.0.1:11435/v1`. Voice (Phase 7) will use AXION's TTS at `:8891`
+and a local faster-whisper for speech-to-text. Kiln never calls a cloud API unless you configure one.
+
+- **Sidebar:** the orb on Home opens Ember on the right (a full-screen sheet on phones). Chats are kept on
+  the server; the clock button lists them, the pen starts a new one. Spotlight, Files and the terminal's
+  "Explain selection / Fix last error" hand their text to the sidebar.
+- **Models:** the picker in the header lists every model the AXION router serves (with "vision" and
+  "loaded" badges). The choice is remembered on the server; `[llm] model` is only the default.
+- **Tools:** list/read/search/write files (the same jail as Files; protected locations stay closed to
+  Ember), run commands as you, system status, the journal, package search (pacman + AUR), and image
+  generation.
+- **Risk tiers**, decided on the server for every call: **safe** (read-only) runs at once; **change**
+  needs a tap; **danger** (deleting, killing, stopping services, force-pushing…) needs you to type the
+  command's name and confirm your Kiln password; **root** (sudo) does too, plus your sudo password, which
+  is fed once to `sudo -S` and never stored or logged. Unknown commands count as change at least, and a
+  shell line is as risky as its riskiest part. Policies live in `[approvals]`. Every call is audited.
+- **Images:** switch the composer to **Image** (or just ask Ember for a picture) to generate with AXION's
+  ComfyUI and Z-Image Turbo (`[image]`). Kiln frees the language model's VRAM first, since the RTX 3080 is
+  shared, and gives it back before the next reply. Results land in `~/Pictures/Kiln` and open in Files.
+- **Stopping:** the stop button, closing the tab, or panic cancels the run and kills any command it started.
+  The orb shows what Ember is doing: thinking, waiting for your OK (ochre), or an error.
 
 ## Files and Editor
 
@@ -213,7 +233,7 @@ need re-authentication.
 ```bash
 # backend
 cd backend && uv venv .venv && uv pip install -p .venv/bin/python -e '.[dev]'
-.venv/bin/pytest            # 113 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets, terminal, filesystem
+.venv/bin/pytest            # 150 tests: auth, CSRF, rate limit, sessions, audit, path jail, sun, config, media, metrics, widgets, terminal, filesystem, Ember
 .venv/bin/ruff check app tests && .venv/bin/mypy app
 
 # run against a scratch config (doesn't touch ~/.config/kiln)
@@ -229,7 +249,7 @@ cd frontend && npm install && npm run dev            # http://localhost:5173
 npm run typecheck && npm run lint && npm run build
 
 # smoke test against a running server
-KILN_URL=https://127.0.0.1:8443 KILN_TEST_PASSWORD='…' npm run e2e
+KILN_URL=https://127.0.0.1:8443 KILN_TEST_PASSWORD='…' npm run e2e   # Ember tests need AXION; KILN_E2E_IMAGES=1 adds ComfyUI
 ```
 
 ## Layout
@@ -252,10 +272,13 @@ backend/app/
   fs/              ops, freedesktop trash, chunked uploads, archives, search, watcher
   routes_fs.py     /api/fs/*, /ws/fs (contract: docs/phase5-fs-api.md)
   routes_core.py   appearance, audit API, /ws/events
+  ember/           llm (AXION client), risk (command classifier), tools, comfy (ComfyUI), service (chat loop, approvals)
+  routes_ember.py  /api/ember/* (NDJSON chat stream, conversations, approvals, models)
 frontend/src/
   app/             App, LockScreen, PasswordPill
   shell/           window manager store, Strip (Home + workspaces + task view), Window,
                    WorkspacePage (tiling/floating), Taskbar (dock, island, tray), Spotlight, app registry
+  ember/           Ember sidebar (chat, tool cards, approvals, image mode, model picker) and its store
   apps/            Settings (appearance, dock, taskbar widgets, devices, security); placeholders
   apps/files/      file manager (views, panels, uploads, watcher)
   apps/editor/     Monaco editor app + workers/themes
@@ -275,7 +298,7 @@ frontend/src/
 3. ✅ Widgets (14 types), Settings → Taskbar, lock-screen toggles, `/ws/metrics`
 4. ✅ Terminal: real PTY over WebSocket, tabs, split panes, persistence, snippets, mobile key row
 5. ✅ File manager, previews (image, video, audio, PDF, markdown, code, 3D, archives), Monaco editor
-6. Ember (text): tools, risk classifier, approvals
+6. ✅ Ember (text): sidebar, tools, risk classifier, approvals, ComfyUI images, model picker
 7. Voice: STT/TTS, full orb states, captions
 8. System apps (dashboard, processes, services, packages, logs, network, storage, power)
 9. Polish: six themes × light/dark, theme editor, motion, mobile, PWA

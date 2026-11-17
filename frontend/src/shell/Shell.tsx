@@ -1,6 +1,7 @@
 /** The unlocked desktop: workspace strip (Home + workspaces), taskbar, Spotlight, task view. */
 import { motion } from "framer-motion";
 import { useEffect } from "react";
+import { EmberPanel } from "../ember/EmberPanel";
 import { useIsMobile, useViewport } from "./hooks";
 import { Spotlight } from "./Spotlight";
 import { Strip } from "./Strip";
@@ -61,6 +62,7 @@ export function Shell() {
   return (
     <motion.main className="fixed inset-0 z-10" aria-label="Kiln desktop" exit={{ opacity: 1 }}>
       <Strip vw={vw} vh={vh} mobile={mobile} />
+      <EmberPanel mobile={mobile} />
       <Taskbar mobile={mobile} />
       <Spotlight />
     </motion.main>

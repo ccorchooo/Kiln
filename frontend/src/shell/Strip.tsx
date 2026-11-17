@@ -4,8 +4,10 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { useCallback, useRef, useState, type FormEvent, type PointerEvent as RPointerEvent } from "react";
+import { useCallback, useRef, useState, type PointerEvent as RPointerEvent } from "react";
 import { spring, springSoft } from "../components/motion";
+import { PANEL_WIDTH } from "../ember/EmberPanel";
+import { useEmber } from "../ember/store";
 import { useAuth } from "../lib/store";
 import { useToasts } from "../lib/toasts";
 import { OrbAnchor } from "../three/OrbAnchor";
@@ -17,57 +19,30 @@ import { MAX_PER_WORKSPACE, useWM } from "./wm";
 const PAGE_GAP = 72;
 const TV_SCALE = 0.62;
 
-function greeting(d = new Date()): string {
-  const h = d.getHours();
-  if (h < 5) return "Good night";
-  if (h < 12) return "Good morning";
-  if (h < 19) return "Good afternoon";
-  return "Good evening";
-}
-
-function HomePage({ showOrb }: { showOrb: boolean }) {
-  const name = useAuth((s) => s.displayName);
+function HomePage({ showOrb, mobile }: { showOrb: boolean; mobile: boolean }) {
   const assistant = useAuth((s) => s.assistantName);
   const taskView = useWM((s) => s.taskView);
-  const [q, setQ] = useState("");
-  const onAsk = (e: FormEvent) => {
-    e.preventDefault();
-    if (!q.trim()) return;
-    useWM.getState().ask(q.trim());
-    setQ("");
-  };
+  const panelOpen = useEmber((s) => s.open);
+  // On desktop the sidebar covers the right; keep the orb centred in what's left.
+  const shift = panelOpen && !mobile ? PANEL_WIDTH + 12 : 0;
   return (
     <div
       data-swipe
       className="absolute inset-0 flex flex-col items-center justify-center pb-24"
+      style={{ paddingRight: shift }}
       inert={taskView}
     >
-      {showOrb ? (
+      {showOrb && !(panelOpen && mobile) ? (
         <OrbAnchor
           untransformed
-          className="aspect-square w-[min(38vh,62vw)]"
-          label={`Talk to ${assistant}`}
-          onActivate={() => useWM.getState().openApp("assistant")}
+          refreshKey={shift}
+          className="aspect-square w-[min(44vh,62vw)]"
+          label={panelOpen ? `Close ${assistant}` : `Open ${assistant}`}
+          onActivate={() => useEmber.getState().toggle()}
         />
       ) : (
-        <div className="aspect-square w-[min(38vh,62vw)]" aria-hidden />
+        <div className="aspect-square w-[min(44vh,62vw)]" aria-hidden />
       )}
-      <h1 className="heading-display mt-6 px-6 text-center text-[clamp(1.75rem,3.2vw,2.6rem)] text-ink">
-        {greeting()}
-        {name ? `, ${name}` : ""}
-      </h1>
-      <form
-        onSubmit={onAsk}
-        className="glass pill-focus mt-6 flex h-12 w-[min(440px,calc(100vw-32px))] items-center rounded-full px-5"
-      >
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Ask anything…"
-          aria-label={`Ask ${assistant}`}
-          className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none"
-        />
-      </form>
     </div>
   );
 }
@@ -200,7 +175,7 @@ export function Strip({ vw, vh, mobile }: { vw: number; vh: number; mobile: bool
                 inert={!taskView && !isCurrent}
               >
                 {p.index < 0 ? (
-                  <HomePage showOrb={current === -1 && !taskView} />
+                  <HomePage showOrb={current === -1 && !taskView} mobile={mobile} />
                 ) : (
                   ws && (
                     <WorkspacePage

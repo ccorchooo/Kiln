@@ -79,6 +79,25 @@ MIGRATIONS: list[str] = [
         updated_at REAL NOT NULL
     );
     """,
+    # 3: Ember conversations. Messages are stored in OpenAI chat format; `data` holds
+    # tool calls/results and UI metadata as JSON.
+    """
+    CREATE TABLE ember_conversations (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        created_at REAL NOT NULL,
+        updated_at REAL NOT NULL
+    );
+    CREATE TABLE ember_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        conversation_id TEXT NOT NULL REFERENCES ember_conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        data TEXT NOT NULL DEFAULT '{}',
+        created_at REAL NOT NULL
+    );
+    CREATE INDEX ember_messages_conv ON ember_messages(conversation_id, id);
+    """,
 ]
 
 

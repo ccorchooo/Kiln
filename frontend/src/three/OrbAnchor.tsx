@@ -14,6 +14,8 @@ interface Props {
   label?: string;
   onActivate?: () => void;
   untransformed?: boolean;
+  /** Re-measure when this changes (e.g. the anchor moved without resizing). */
+  refreshKey?: unknown;
   children?: ReactNode;
 }
 
@@ -30,7 +32,14 @@ function layoutRect(el: HTMLElement): { x: number; y: number; w: number; h: numb
   return { x, y, w: el.offsetWidth, h: el.offsetHeight };
 }
 
-export function OrbAnchor({ className = "", label, onActivate, untransformed = false, children }: Props) {
+export function OrbAnchor({
+  className = "",
+  label,
+  onActivate,
+  untransformed = false,
+  refreshKey,
+  children,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const owner = useId();
   const quality = useUI((s) => s.quality);
@@ -57,7 +66,7 @@ export function OrbAnchor({ className = "", label, onActivate, untransformed = f
       ro.disconnect();
       window.removeEventListener("resize", publish);
     };
-  }, [owner, untransformed]);
+  }, [owner, untransformed, refreshKey]);
 
   useEffect(
     () => () => {

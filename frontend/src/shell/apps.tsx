@@ -24,13 +24,14 @@ export interface AppDef {
   keywords: string[];
   pairable: boolean;
   multiInstance: boolean;
+  /** Opens Ember's sidebar instead of a window. */
+  sidebar?: boolean;
   /** Phase in which the real app lands; placeholder until then. */
   phase?: number;
   component?: LazyExoticComponent<ComponentType<AppProps>>;
 }
 
 const SettingsApp = lazy(() => import("../apps/settings/SettingsApp"));
-const AssistantPlaceholder = lazy(() => import("../apps/assistant/AssistantPlaceholder"));
 const TerminalApp = lazy(() => import("../apps/terminal/TerminalApp"));
 const FilesApp = lazy(() => import("../apps/files/FilesApp"));
 const EditorApp = lazy(() => import("../apps/editor/EditorApp"));
@@ -44,8 +45,7 @@ export const APPS: Record<string, AppDef> = {
     keywords: ["ai", "assistant", "chat", "ask", "ember"],
     pairable: false,
     multiInstance: false,
-    phase: 6,
-    component: AssistantPlaceholder,
+    sidebar: true,
   },
   terminal: {
     id: "terminal",

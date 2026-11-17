@@ -40,8 +40,8 @@ import { spring } from "../components/motion";
 import { api } from "../lib/api";
 import { useAuth, useUI, type OrbMood } from "../lib/store";
 import { useToasts } from "../lib/toasts";
-import { useWM } from "../shell/wm";
 import { OrbAnchor } from "../three/OrbAnchor";
+import { useEmber } from "../ember/store";
 import { ago, bytes, deg, duration, pct, rate } from "./format";
 import { reportWidgetError, useMetrics, type Series } from "./store";
 import type { MetricsData, WidgetConfig, WidgetType } from "./types";
@@ -252,14 +252,13 @@ export const WIDGETS: Record<WidgetType, Def> = {
     value: () => null,
     popover: (d) => (
       <>
-        <Stat label="Model" value={d.ai?.model ?? "—"} />
+        <Stat label="Model" value={useEmber.getState().currentModel || (d.ai?.model ?? "—")} />
         <Stat label="Server" value={d.ai ? (d.ai.reachable ? "Reachable" : "Not running") : "—"} />
-        <Stat label="Tokens/s" value="—" />
-        <Stat label="Pending approvals" value="0" />
+        <Stat label="Pending approvals" value={String(useEmber.getState().approvals.length)} />
         {d.ai && !d.ai.reachable && <Install cmd="local-ai run" />}
         <button
           type="button"
-          onClick={() => useWM.getState().openApp("assistant")}
+          onClick={() => useEmber.getState().setOpen(true)}
           className="hover-lift mt-1 self-start rounded-full bg-accent-fill px-4 py-1.5 text-sm text-on-accent"
         >
           Open Ember

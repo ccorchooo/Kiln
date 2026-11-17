@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from app.audit.log import AuditLog
 from app.auth.credentials import Credentials
@@ -15,6 +16,9 @@ from app.events import EventHub
 from app.fs.jail import Jail
 from app.system.hub import MetricsHub
 from app.terminal.manager import TerminalManager
+
+if TYPE_CHECKING:
+    from app.ember.service import EmberService
 
 PanicHook = Callable[[], Awaitable[None]]
 
@@ -33,6 +37,7 @@ class AppState:
     events: EventHub = field(default_factory=EventHub)
     # Registered by subsystems (terminals, running AI tools) to kill everything on panic.
     panic_hooks: list[PanicHook] = field(default_factory=list)
+    ember: EmberService = field(init=False)
 
     @classmethod
     def build(cls, config: Config) -> AppState:
@@ -55,5 +60,9 @@ class AppState:
                 max_read_bytes=config.files.max_read_bytes,
             ),
         )
+        from app.ember.service import EmberService
+
+        state.ember = EmberService(state)
         state.panic_hooks.append(terminals.panic)
+        state.panic_hooks.append(state.ember.panic)
         return state

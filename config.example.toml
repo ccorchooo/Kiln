@@ -46,6 +46,21 @@ model = "qwen3.5:4b"
 api_key = "axion-local"
 context_length = 16384
 temperature = 0.7
+unload_for_images = true        # free the GPU before an image job (shared with ComfyUI)
+max_tool_rounds = 8             # tool calls Ember may chain for one message
+# Ember's model picker lists every model the router serves and remembers the choice;
+# `model` is only the default.
+
+[image]                         # Ember's image generation via AXION's ComfyUI (Z-Image Turbo)
+comfyui_url = "http://127.0.0.1:8188"
+output_dir = "~/Pictures/Kiln"  # inside your home folder, so Files can open the results
+unet = "z-image-turbo-Q5_K_M.gguf"
+vae = "ae.safetensors"
+clip = "qwen_3_4b_fp8_mixed.safetensors"
+clip_type = "lumina2"
+steps = 10
+shift = 3.0
+timeout_seconds = 300
 
 [voice]
 stt_model = "small"             # faster-whisper model

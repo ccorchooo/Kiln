@@ -4,6 +4,7 @@
  */
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { useEmber } from "../ember/store";
 import { APPS, DEFAULT_PINNED, MAX_PINNED } from "./apps";
 
 export const MAX_PER_WORKSPACE = 2;
@@ -40,7 +41,6 @@ interface WMState {
   pinned: string[];
   taskView: boolean;
   spotlight: boolean;
-  pendingAsk: string | null;
 }
 
 interface WMActions {
@@ -63,7 +63,6 @@ interface WMActions {
   setTaskView: (open: boolean) => void;
   setSpotlight: (open: boolean) => void;
   ask: (q: string) => void;
-  consumeAsk: () => string | null;
 }
 
 export type WM = WMState & WMActions;
@@ -114,11 +113,15 @@ export const useWM = create<WM>()(
       pinned: DEFAULT_PINNED,
       taskView: false,
       spotlight: false,
-      pendingAsk: null,
 
       openApp: (appId, opts = {}) => {
         const app = APPS[appId];
         if (!app) return;
+        if (app.sidebar) {
+          useEmber.getState().setOpen(true);
+          set({ taskView: false, spotlight: false });
+          return;
+        }
         const s = get();
         if (!app.multiInstance && !opts.newWorkspace) {
           const existing = Object.values(s.windows).find((w) => w.appId === appId);
@@ -305,13 +308,8 @@ export const useWM = create<WM>()(
       setTaskView: (open) => set({ taskView: open, spotlight: false }),
       setSpotlight: (open) => set({ spotlight: open, taskView: open ? false : get().taskView }),
       ask: (q) => {
-        set({ pendingAsk: q });
-        get().openApp("assistant");
-      },
-      consumeAsk: () => {
-        const q = get().pendingAsk;
-        if (q !== null) set({ pendingAsk: null });
-        return q;
+        set({ taskView: false, spotlight: false });
+        useEmber.getState().ask(q);
       },
     }),
     {
@@ -341,7 +339,7 @@ export const useWM = create<WM>()(
         const p = (persisted ?? {}) as Partial<WMState>;
         const windows: Record<string, Win> = {};
         for (const [id, w] of Object.entries(p.windows ?? {}))
-          if (w && APPS[w.appId]) windows[id] = { id, appId: w.appId };
+          if (w && APPS[w.appId] && !APPS[w.appId]!.sidebar) windows[id] = { id, appId: w.appId };
         const workspaces = (p.workspaces ?? [])
           .map((w) => ({
             ...newWorkspace(),

@@ -16,6 +16,7 @@ from app.auth.deps import UNSAFE_METHODS, origin_ok
 from app.auth.routes import router as auth_router
 from app.config import DATA_DIR, Config, load_config
 from app.routes_core import router as core_router
+from app.routes_ember import router as ember_router
 from app.routes_fs import install_error_handlers
 from app.routes_fs import router as fs_router
 from app.routes_metrics import router as metrics_router
@@ -124,6 +125,7 @@ def create_app(config: Config | None = None) -> FastAPI:
             task.cancel()
             await state.metrics.stop()
             await state.terminals.stop()
+            await state.ember.stop_all()
             await state.audit.record("server.stop", actor="system")
             await state.db.close()
 
@@ -135,6 +137,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(metrics_router)
     app.include_router(terminal_router)
     app.include_router(fs_router)
+    app.include_router(ember_router)
     install_error_handlers(app)
 
     @app.get("/api/health")

@@ -16,12 +16,12 @@ test("lock screen → wrong password → unlock → lock", async ({ page }) => {
   await pill.fill("definitely wrong");
   await pill.press("Enter");
   await expect(pill).toHaveValue("");
-  await expect(page.getByText(/Good (morning|afternoon|evening|night)/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open Ember" })).toHaveCount(0);
 
   await pill.fill(password);
   await pill.press("Enter");
-  await expect(page.getByText(/Good (morning|afternoon|evening|night)/)).toBeVisible();
-  await expect(page.getByLabel(/^Ask /)).toBeVisible();
+  // Home is just the orb now; it opens Ember's sidebar.
+  await expect(page.getByRole("button", { name: "Open Ember" })).toBeVisible();
 
   await page.keyboard.press("Control+Alt+l");
   await expect(page.getByLabel("Password")).toBeVisible();
@@ -44,7 +44,7 @@ test("window manager: pairing, max two per workspace, task view, persistence", a
   const pill = page.getByLabel("Password");
   await pill.fill(password);
   await pill.press("Enter");
-  await expect(page.getByText(/Good (morning|afternoon|evening|night)/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Ember" })).toBeVisible();
 
   const dock = page.getByLabel("Dock");
   await dock.getByRole("button", { name: /^Terminal/ }).click();
@@ -65,7 +65,7 @@ test("window manager: pairing, max two per workspace, task view, persistence", a
 
   await page.reload();
   await page
-    .getByLabel(/Password|^Ask /)
+    .getByLabel(/^(Password|Dock)$/)
     .first()
     .waitFor();
   expect(await layout()).toEqual([2, 1]);
