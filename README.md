@@ -3,14 +3,6 @@
 A warm, minimal, AI-centered web shell for this CachyOS machine, reachable from any browser on your
 Tailscale network. Ember, the local assistant, lives in the orb.
 
-> **Status: Phase 8 of 10.** The System app (live overview, processes, services, packages, network, storage,
-> power) and a live Logs app are in. Phase 7 gave Ember a voice: talk to it with the mic or `Ctrl+Alt+Space`,
-> hear replies spoken by AXION's TTS, with captions under the orb. Phase 6 brought chat with tools, approvals, image generation
-> and a model picker, in a sidebar the orb opens. Files, previews and the editor arrived in Phase 5, the terminal
-> in Phase 4, widgets in Phase 3. Earlier: **Phase 2.** Security core, lock screen, wallpaper and orb, plus the desktop shell
-> (taskbar, Spotlight, workspaces with tiling/floating, task view) are done. Apps are placeholders
-> until their phases land. See [Roadmap](#roadmap).
-
 ## Using the desktop
 
 | Action | How |
